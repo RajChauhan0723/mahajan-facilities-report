@@ -1,5 +1,5 @@
 // Service Worker for Mahajan Facilities Daily Cleaning Report PWA
-const CACHE_NAME = 'mahajan-report-v3';
+const CACHE_NAME = 'mahajan-report-v4';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

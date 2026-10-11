@@ -12,7 +12,7 @@ import {
 import { processImageFile, formatBytes } from './imageProcessor.js';
 import { generateDailyReportPDF, formatDisplayDate } from './pdfGenerator.js';
 
-// Configuration & 13 Building Floor Definitions
+// Configuration & 12 Building Floor Definitions (Ground to 11th Floor)
 const FLOORS_CONFIG = [
   { id: 'ground', name: 'Ground Floor' },
   { id: '1st', name: '1st Floor' },
@@ -25,11 +25,21 @@ const FLOORS_CONFIG = [
   { id: '8th', name: '8th Floor' },
   { id: '9th', name: '9th Floor' },
   { id: '10th', name: '10th Floor' },
-  { id: '11th', name: '11th Floor' },
-  { id: '12th', name: '12th Floor' }
+  { id: '11th', name: '11th Floor' }
 ];
 
 const MAX_PHOTOS_PER_SECTION = 20;
+
+/**
+ * Reconciles saved draft floors to current 12 building floors (Ground to 11th)
+ */
+function reconcileFloors(savedFloors) {
+  if (!Array.isArray(savedFloors)) return null;
+  return FLOORS_CONFIG.map((cfg) => {
+    const found = savedFloors.find((f) => f.id === cfg.id);
+    return found ? { ...found, name: cfg.name } : { id: cfg.id, name: cfg.name, generalPhotos: [], washroomPhotos: [] };
+  });
+}
 
 // Application State
 const state = {
@@ -229,26 +239,26 @@ function renderApp() {
 
           <div class="kpi-card">
             <span class="kpi-label">Total Floors</span>
-            <span class="kpi-value">13</span>
-            <span class="kpi-sub">Ground to 12th Floor</span>
+            <span class="kpi-value">12</span>
+            <span class="kpi-sub">Ground to 11th Floor</span>
           </div>
 
           <div class="kpi-card kpi-accent-blue">
             <span class="kpi-label">General Photos</span>
             <span class="kpi-value" id="kpi-general-val">${stats.totalGeneral}</span>
-            <span class="kpi-sub">Max 260 total</span>
+            <span class="kpi-sub">Max 240 total</span>
           </div>
 
           <div class="kpi-card kpi-accent-teal">
             <span class="kpi-label">Washroom Photos</span>
             <span class="kpi-value" id="kpi-washroom-val">${stats.totalWashroom}</span>
-            <span class="kpi-sub">Max 260 total</span>
+            <span class="kpi-sub">Max 240 total</span>
           </div>
 
           <div class="kpi-card">
             <span class="kpi-label">Total Uploaded</span>
             <span class="kpi-value" id="kpi-total-val">${stats.grandTotal}</span>
-            <span class="kpi-sub">Cap: 520 photos</span>
+            <span class="kpi-sub">Cap: 480 photos</span>
           </div>
         </div>
       </section>
@@ -256,11 +266,11 @@ function renderApp() {
       <!-- Progress Tracking Banner -->
       <section class="progress-container">
         <div class="progress-header">
-          <span>Inspection Progress: <strong id="progress-floor-count">${stats.floorsWithPhotos} of 13 Floors Documented</strong></span>
-          <span id="progress-percent">${Math.round((stats.floorsWithPhotos / 13) * 100)}%</span>
+          <span>Inspection Progress: <strong id="progress-floor-count">${stats.floorsWithPhotos} of 12 Floors Documented</strong></span>
+          <span id="progress-percent">${Math.round((stats.floorsWithPhotos / 12) * 100)}%</span>
         </div>
         <div class="progress-track">
-          <div class="progress-fill" id="progress-fill-bar" style="width: ${(stats.floorsWithPhotos / 13) * 100}%;"></div>
+          <div class="progress-fill" id="progress-fill-bar" style="width: ${(stats.floorsWithPhotos / 12) * 100}%;"></div>
         </div>
       </section>
 
@@ -279,7 +289,7 @@ function renderApp() {
       <!-- Quick Jump Navigation -->
       <section class="quick-nav-container">
         <div class="quick-nav-header">
-          <h2 class="section-heading">Floor Navigation (13 Levels)</h2>
+          <h2 class="section-heading">Floor Navigation (12 Levels)</h2>
           <div class="nav-actions">
             <button id="btn-expand-all" class="btn-ghost-sm">Expand All</button>
             <button id="btn-collapse-all" class="btn-ghost-sm">Collapse All</button>
@@ -324,7 +334,7 @@ function renderApp() {
       <div class="action-bar-inner">
         <div class="action-bar-stats">
           <span class="stat-chip" id="bar-total-chip">📸 ${stats.grandTotal} Photos</span>
-          <span class="stat-chip" id="bar-floors-chip">🏢 ${stats.floorsWithPhotos}/13 Floors</span>
+          <span class="stat-chip" id="bar-floors-chip">🏢 ${stats.floorsWithPhotos}/12 Floors</span>
         </div>
         <div class="action-bar-buttons">
           <button id="btn-generate-pdf" class="btn-primary-generate" ${stats.grandTotal === 0 ? 'title="Upload at least 1 photo to generate PDF"' : ''}>
@@ -384,7 +394,7 @@ function renderApp() {
           <button class="modal-close-btn" id="btn-close-clear-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p>This will permanently remove photos for <strong>${displayDate}</strong> across all 13 floors and reset today's sheet.</p>
+          <p>This will permanently remove photos for <strong>${displayDate}</strong> across all 12 floors and reset today's sheet.</p>
           <p style="margin-top: 10px; font-weight: 700; color: #b91c1c;">Are you sure you want to proceed?</p>
         </div>
         <div class="modal-footer">
@@ -747,8 +757,9 @@ function attachEventListeners() {
 
       // 3. Load draft for newDate
       const existingDraft = await loadDraft(newDate);
-      if (existingDraft && Array.isArray(existingDraft.floors) && existingDraft.floors.length === 13) {
-        state.floors = existingDraft.floors;
+      const reconciled = existingDraft ? reconcileFloors(existingDraft.floors) : null;
+      if (reconciled) {
+        state.floors = reconciled;
         const stats = getStats();
         showToast(`Loaded saved sheet for ${formatDisplayDate(newDate)} (${stats.grandTotal} photos).`, 'info');
       } else {
@@ -845,13 +856,17 @@ function attachEventListeners() {
         await saveDraft(state.reportDate, state.floors);
 
         state.reportDate = item.reportDate;
-        if (item.floors && Array.isArray(item.floors) && item.floors.length === 13) {
-          state.floors = JSON.parse(JSON.stringify(item.floors));
+        const reconciled = reconcileFloors(item.floors);
+        if (reconciled) {
+          state.floors = reconciled;
         } else {
           const draft = await loadDraft(item.reportDate);
-          if (draft && Array.isArray(draft.floors)) {
-            state.floors = draft.floors;
-          }
+          state.floors = (draft && reconcileFloors(draft.floors)) || FLOORS_CONFIG.map((f) => ({
+            id: f.id,
+            name: f.name,
+            generalPhotos: [],
+            washroomPhotos: []
+          }));
         }
 
         state.lastGeneratedPdf = {
@@ -1376,9 +1391,9 @@ function updateGlobalStatsUI() {
   if (kpiTot) kpiTot.textContent = stats.grandTotal;
 
   const progressCount = document.getElementById('progress-floor-count');
-  if (progressCount) progressCount.textContent = `${stats.floorsWithPhotos} of 13 Floors Documented`;
+  if (progressCount) progressCount.textContent = `${stats.floorsWithPhotos} of 12 Floors Documented`;
 
-  const percent = Math.round((stats.floorsWithPhotos / 13) * 100);
+  const percent = Math.round((stats.floorsWithPhotos / 12) * 100);
   const progressPercent = document.getElementById('progress-percent');
   if (progressPercent) progressPercent.textContent = `${percent}%`;
 
@@ -1389,7 +1404,7 @@ function updateGlobalStatsUI() {
   if (chipTot) chipTot.textContent = `📸 ${stats.grandTotal} Photos`;
 
   const chipFloors = document.getElementById('bar-floors-chip');
-  if (chipFloors) chipFloors.textContent = `🏢 ${stats.floorsWithPhotos}/13 Floors`;
+  if (chipFloors) chipFloors.textContent = `🏢 ${stats.floorsWithPhotos}/12 Floors`;
 
   const btnGen = document.getElementById('btn-generate-pdf');
   if (btnGen) {
@@ -1550,8 +1565,9 @@ async function initApp() {
     state.reportDate = activeDate;
 
     const draft = await loadDraft(activeDate);
-    if (draft && Array.isArray(draft.floors) && draft.floors.length === 13) {
-      state.floors = draft.floors;
+    const reconciled = draft ? reconcileFloors(draft.floors) : null;
+    if (reconciled) {
+      state.floors = reconciled;
     }
 
     renderApp();

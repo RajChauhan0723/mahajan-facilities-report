@@ -273,7 +273,7 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
   doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
-  doc.text('BUILDING FLOORS COVERED: Ground Floor to 12th Floor (13 Levels)', marginX + 4, y + 5.5);
+  doc.text('BUILDING FLOORS COVERED: Ground Floor to 11th Floor (12 Levels)', marginX + 4, y + 5.5);
 
   y += 12;
 
@@ -350,7 +350,7 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(...NAVY_PRIMARY);
-  doc.text('Grand Total (13 Floors)', colX[0] + 3, y + 5.2);
+  doc.text('Grand Total (12 Floors)', colX[0] + 3, y + 5.2);
   doc.text(`${totalGeneralPhotos} photos`, colX[1] + 3, y + 5.2);
   doc.text(`${totalWashroomPhotos} photos`, colX[2] + 3, y + 5.2);
   doc.setTextColor(...GOLD_DARK);
