@@ -1,7 +1,7 @@
 /* ==========================================================================
    MAHAJAN FACILITIES — DAILY CLEANING REPORT GENERATOR
-   Brand Theme: Royal Navy Blue (#0c2340), Regal Metallic Gold (#c59b27), Crisp White (#ffffff)
-   Tailored to Official Uniforms & Corporate Executive Brand Standards
+   Executive Corporate Theme: Royal Navy Blue, Regal Metallic Gold, Executive Slate & Crisp White
+   High-Contrast Enterprise Facility Management Design (Anti-washed-out depth)
    ========================================================================== */
 
 :root {
@@ -13,8 +13,8 @@
   --navy-700: #123359;
   --navy-600: #1a477b;
   --navy-500: #235d9e;
-  --navy-100: #e8f0f8;
-  --navy-50:  #f2f6fa;
+  --navy-100: #e2eefb;
+  --navy-50:  #edf5fd;
 
   /* Regal Metallic Gold Palette (Matching Buttons, Epaulettes, Crown & Lobby Pillars) */
   --gold-600: #a37a15;
@@ -22,8 +22,8 @@
   --gold-400: #d4af37;
   --gold-300: #e5c158;
   --gold-200: #f1db99;
-  --gold-100: #fbf5e2;
-  --gold-50:  #fdfbf4;
+  --gold-100: #fdf5d7;
+  --gold-50:  #fefbf0;
   --gold-gradient: linear-gradient(135deg, #e5c158 0%, #c59b27 50%, #ad8214 100%);
   --gold-gradient-hover: linear-gradient(135deg, #eed37a 0%, #d4af37 50%, #c59b27 100%);
 
@@ -32,8 +32,11 @@
   --blue-light:   #eff6ff;
   --blue-dark:    #1e40af;
 
-  /* Marble & Slate Neutral Palette */
+  /* Executive Corporate Slate & Neutral Palette (High-contrast depth) */
   --white:      #ffffff;
+  --body-bg:    #eaeff5;      /* Rich executive slate backdrop — eliminates washed-out white */
+  --panel-bg:   #ffffff;
+  --subtle-bg:  #f1f5f9;
   --slate-900:  #0f172a;
   --slate-800:  #1e293b;
   --slate-700:  #334155;
@@ -41,10 +44,8 @@
   --slate-500:  #64748b;
   --slate-400:  #94a3b8;
   --slate-300:  #cbd5e1;
-  --slate-200:  #e2e8f0;
-  --slate-100:  #f1f5f9;
-  --slate-50:   #f8fafc;
-  --body-bg:    #f4f6fa;
+  --slate-200:  #c9d6e4;
+  --slate-100:  #e2e8f0;
 
   /* Status Colors */
   --success:    #15803d;
@@ -54,12 +55,12 @@
   --danger:     #b91c1c;
   --danger-bg:  #fef2f2;
 
-  /* Shadows with subtle navy & gold tints */
-  --shadow-sm: 0 1px 3px rgba(12, 35, 64, 0.06);
-  --shadow-md: 0 4px 10px rgba(12, 35, 64, 0.08), 0 2px 4px rgba(12, 35, 64, 0.04);
-  --shadow-lg: 0 10px 20px rgba(12, 35, 64, 0.1), 0 4px 8px rgba(12, 35, 64, 0.06);
-  --shadow-xl: 0 20px 30px rgba(12, 35, 64, 0.14), 0 8px 12px rgba(12, 35, 64, 0.08);
-  --shadow-gold: 0 4px 14px rgba(197, 155, 39, 0.35);
+  /* Multi-Layer Shadows for Clean Structural Elevation */
+  --shadow-sm: 0 1px 3px rgba(12, 35, 64, 0.08);
+  --shadow-md: 0 4px 12px rgba(12, 35, 64, 0.09), 0 1px 3px rgba(12, 35, 64, 0.05);
+  --shadow-lg: 0 10px 24px rgba(12, 35, 64, 0.12), 0 3px 8px rgba(12, 35, 64, 0.06);
+  --shadow-xl: 0 20px 32px rgba(12, 35, 64, 0.16), 0 6px 12px rgba(12, 35, 64, 0.08);
+  --shadow-gold: 0 4px 16px rgba(197, 155, 39, 0.4);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -78,6 +79,7 @@
 body {
   font-family: var(--font-sans);
   background-color: var(--body-bg);
+  background-image: linear-gradient(180deg, #e4eaf3 0%, #eaeff5 350px, #e7edf5 100%);
   color: var(--slate-800);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -99,7 +101,7 @@ body {
   background: linear-gradient(135deg, var(--navy-950) 0%, var(--navy-900) 40%, var(--navy-850) 80%, var(--navy-800) 100%);
   color: var(--white);
   padding: 22px 0 20px;
-  box-shadow: 0 4px 20px rgba(7, 23, 43, 0.4);
+  box-shadow: 0 4px 20px rgba(7, 23, 43, 0.45);
   position: relative;
   border-bottom: 3px solid var(--gold-500);
 }
@@ -142,20 +144,6 @@ body {
 
 .brand-logo-img:hover {
   transform: scale(1.05);
-}
-
-.brand-badge {
-  width: 48px;
-  height: 48px;
-  background: var(--gold-gradient);
-  border: 2px solid var(--gold-200);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-gold);
 }
 
 .brand-titles h1 {
@@ -310,7 +298,7 @@ body {
 }
 
 /* ==========================================================================
-   KPI DASHBOARD CARDS — CRISP WHITE WITH GOLD TOP ACCENT
+   KPI DASHBOARD CARDS — ELEVATED CRISP WHITE WITH METALLIC GOLD TRIM
    ========================================================================== */
 .dashboard-kpis {
   margin-top: -12px;
@@ -335,9 +323,9 @@ body {
   background: var(--white);
   border-radius: var(--radius-md);
   padding: 14px 16px;
-  border: 1px solid var(--slate-200);
-  border-top: 3px solid var(--gold-500);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--slate-300);
+  border-top: 4px solid var(--gold-500);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
@@ -345,7 +333,7 @@ body {
 
 .kpi-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   border-top-color: var(--gold-400);
 }
 
@@ -354,20 +342,20 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: var(--slate-500);
+  color: var(--slate-600);
   margin-bottom: 4px;
 }
 
 .kpi-value {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--navy-800);
+  font-size: 23px;
+  font-weight: 900;
+  color: var(--navy-900);
   line-height: 1.1;
 }
 
 .kpi-sub {
   font-size: 11px;
-  color: var(--slate-400);
+  color: var(--slate-500);
   margin-top: 4px;
   font-weight: 600;
 }
@@ -385,12 +373,12 @@ body {
    ========================================================================== */
 .progress-container {
   background: var(--white);
-  border: 1px solid var(--slate-200);
-  border-left: 4px solid var(--gold-500);
+  border: 1px solid var(--slate-300);
+  border-left: 5px solid var(--gold-500);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: 14px 18px;
   margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .progress-header {
@@ -400,21 +388,21 @@ body {
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 800;
-  color: var(--navy-800);
+  color: var(--navy-900);
 }
 
 .progress-track {
   width: 100%;
-  height: 9px;
+  height: 10px;
   background-color: var(--slate-100);
   border-radius: 999px;
   overflow: hidden;
-  border: 1px solid var(--slate-200);
+  border: 1px solid var(--slate-300);
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--navy-800) 0%, var(--blue-primary) 50%, var(--gold-500) 100%);
+  background: linear-gradient(90deg, var(--navy-900) 0%, var(--blue-primary) 50%, var(--gold-500) 100%);
   border-radius: 999px;
   transition: width 0.3s ease;
 }
@@ -427,12 +415,13 @@ body {
   align-items: center;
   justify-content: space-between;
   background: var(--white);
-  border: 1px dashed var(--gold-400);
+  border: 1px solid var(--slate-300);
+  border-left: 5px solid var(--gold-500);
   border-radius: var(--radius-sm);
-  padding: 8px 14px;
+  padding: 10px 16px;
   font-size: 12px;
-  color: var(--slate-700);
-  margin-bottom: 16px;
+  color: var(--slate-800);
+  margin-bottom: 20px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -440,20 +429,26 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background-color: var(--gold-500);
   box-shadow: 0 0 0 3px rgba(197, 155, 39, 0.25);
 }
 
 /* ==========================================================================
-   FLOOR QUICK NAVIGATION PILLS
+   FLOOR QUICK NAVIGATION PILLS — STRUCTURED WHITE CARD WITH SLATE CHIPS
    ========================================================================== */
 .quick-nav-container {
+  background: var(--white);
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--slate-300);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 20px;
 }
 
@@ -461,7 +456,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .section-heading {
@@ -469,7 +464,7 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: var(--navy-800);
+  color: var(--navy-900);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -483,10 +478,10 @@ body {
 .btn-ghost-sm {
   background: var(--white);
   border: 1px solid var(--slate-300);
-  color: var(--slate-700);
+  color: var(--slate-800);
   font-size: 12px;
   font-weight: 700;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -494,57 +489,56 @@ body {
 }
 
 .btn-ghost-sm:hover {
-  background: var(--slate-50);
+  background: var(--slate-100);
   border-color: var(--gold-500);
-  color: var(--navy-800);
+  color: var(--navy-900);
 }
 
 .floor-pills-scroll {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 
 .floor-pill {
   flex-shrink: 0;
-  background: var(--white);
-  border: 1px solid var(--slate-200);
+  background: var(--subtle-bg);
+  border: 1px solid var(--slate-300);
   padding: 8px 12px;
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 700;
-  color: var(--slate-700);
+  color: var(--navy-900);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
   transition: all 0.15s ease;
   user-select: none;
-  box-shadow: var(--shadow-sm);
 }
 
 .floor-pill:hover {
   border-color: var(--gold-500);
-  background: var(--gold-50);
-  color: var(--navy-900);
+  background: var(--gold-100);
+  color: var(--navy-950);
 }
 
 .floor-pill.has-photos {
   border-color: var(--gold-500);
-  background: var(--navy-800);
+  background: var(--navy-900);
   color: var(--white);
-  box-shadow: 0 2px 8px rgba(12, 35, 64, 0.2);
+  box-shadow: 0 2px 8px rgba(7, 23, 43, 0.25);
 }
 
 .pill-count {
   font-size: 11px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--slate-100);
-  color: var(--slate-700);
+  background: var(--slate-300);
+  color: var(--slate-800);
   font-weight: 800;
 }
 
@@ -554,31 +548,35 @@ body {
 }
 
 /* ==========================================================================
-   FLOOR CARDS ACCORDION — PURE WHITE WITH GOLD & NAVY HIGHLIGHTS
+   FLOOR CARDS ACCORDION — CRISP ELEVATED WHITE CARDS WITH ROYAL NAVY / GOLD SPINE
    ========================================================================== */
 .floor-card {
   background: var(--white);
-  border: 1px solid var(--slate-200);
-  border-radius: var(--radius-lg);
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--slate-300);
+  border-left: 6px solid var(--navy-800); /* Distinct navy spine accent on every floor! */
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-md);
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .floor-card:hover {
-  border-color: var(--slate-300);
-  box-shadow: var(--shadow-md);
+  border-color: var(--slate-400);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
 }
 
+/* When expanded: Regal Gold Spine + Champagne Glow */
 .floor-card.expanded {
   border-color: var(--gold-400);
-  box-shadow: var(--shadow-md);
+  border-left: 6px solid var(--gold-500);
+  box-shadow: 0 8px 24px rgba(12, 35, 64, 0.12);
 }
 
 .floor-card-header {
   padding: 16px 20px;
-  background: var(--white);
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -588,10 +586,13 @@ body {
   transition: background-color 0.15s ease;
 }
 
+.floor-card:hover .floor-card-header {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f4f9 100%);
+}
+
 .floor-card.expanded .floor-card-header {
-  border-bottom-color: var(--slate-200);
-  background: var(--gold-50);
-  border-left: 4px solid var(--gold-500);
+  border-bottom-color: var(--gold-300);
+  background: linear-gradient(135deg, #fef9eb 0%, #f8eed1 100%);
 }
 
 .floor-header-left {
@@ -602,20 +603,21 @@ body {
 }
 
 .floor-num-badge {
-  background: var(--navy-800);
-  color: var(--gold-200);
+  background: linear-gradient(135deg, var(--navy-950) 0%, var(--navy-900) 100%);
+  color: var(--gold-300);
   font-size: 12px;
-  font-weight: 800;
-  padding: 4px 10px;
+  font-weight: 900;
+  padding: 5px 12px;
   border-radius: var(--radius-sm);
-  letter-spacing: 0.6px;
-  border: 1px solid var(--gold-500);
+  letter-spacing: 0.8px;
+  border: 1.5px solid var(--gold-500);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .floor-title {
   font-size: 17px;
   font-weight: 800;
-  color: var(--navy-800);
+  color: var(--navy-900);
 }
 
 .floor-header-badges {
@@ -626,8 +628,8 @@ body {
 
 .badge-pill {
   font-size: 11px;
-  font-weight: 700;
-  padding: 3px 9px;
+  font-weight: 800;
+  padding: 4px 10px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -635,20 +637,21 @@ body {
 }
 
 .badge-pill.badge-gen {
-  background: var(--navy-100);
-  color: var(--navy-800);
-  border: 1px solid #bfdbfe;
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
 }
 
 .badge-pill.badge-wash {
-  background: var(--gold-100);
-  color: var(--gold-600);
-  border: 1px solid var(--gold-300);
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
 }
 
 .badge-pill.badge-empty {
   background: var(--slate-100);
-  color: var(--slate-500);
+  color: var(--slate-600);
+  border: 1px solid var(--slate-300);
 }
 
 .floor-chevron {
@@ -657,20 +660,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gold-500);
+  color: var(--gold-600);
   font-size: 16px;
   transition: transform 0.2s ease;
 }
 
 .floor-card.expanded .floor-chevron {
   transform: rotate(180deg);
+  color: var(--gold-600);
 }
 
-/* Floor Body: Two Sections Side by Side */
+/* Floor Body: Executive Slate Background Inside for High Contrast */
 .floor-card-body {
   display: none;
   padding: 20px;
-  background: var(--slate-50);
+  background: #eaeff5;
+  border-top: 1px solid var(--slate-300);
 }
 
 .floor-card.expanded .floor-card-body {
@@ -689,24 +694,57 @@ body {
   }
 }
 
-/* Individual Section Panel */
+/* Individual Section Panel — Crisp White Module with Brand Colored Header */
 .section-panel {
   background: var(--white);
-  border: 1px solid var(--slate-200);
+  border: 1px solid var(--slate-300);
   border-radius: var(--radius-md);
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 
 .section-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--slate-100);
+  padding: 12px 16px;
+  border-bottom: 2px solid transparent;
+}
+
+/* General Cleaning Section Header — Royal Navy Header */
+.section-panel.panel-general .section-panel-header {
+  background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-800) 100%);
+  border-bottom-color: var(--gold-500);
+  color: var(--white);
+}
+
+.section-panel.panel-general .section-panel-title {
+  color: var(--white);
+}
+
+.section-panel.panel-general .section-icon-box {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--gold-300);
+  border: 1px solid var(--gold-400);
+}
+
+/* Washroom Cleaning Section Header — Royal Gold/Bronze Header */
+.section-panel.panel-washroom .section-panel-header {
+  background: linear-gradient(135deg, #16365c 0%, var(--navy-900) 100%);
+  border-bottom-color: var(--gold-500);
+  color: var(--white);
+}
+
+.section-panel.panel-washroom .section-panel-title {
+  color: var(--white);
+}
+
+.section-panel.panel-washroom .section-icon-box {
+  background: var(--gold-500);
+  color: var(--navy-950);
+  border: 1px solid var(--gold-300);
 }
 
 .section-panel-title {
@@ -715,7 +753,6 @@ body {
   gap: 8px;
   font-size: 14px;
   font-weight: 800;
-  color: var(--navy-800);
 }
 
 .section-icon-box {
@@ -728,47 +765,37 @@ body {
   font-size: 14px;
 }
 
-.section-panel.panel-general .section-icon-box {
-  background: var(--navy-800);
-  color: var(--gold-300);
-  border: 1px solid var(--gold-500);
-}
-
-.section-panel.panel-washroom .section-icon-box {
-  background: var(--gold-500);
-  color: var(--navy-950);
-  border: 1px solid var(--gold-300);
-}
-
 .photo-counter-badge {
   font-size: 12px;
   font-weight: 800;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: var(--slate-100);
-  color: var(--slate-600);
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .photo-counter-badge.limit-reached {
   background: #fee2e2;
   color: #b91c1c;
+  border-color: #ef4444;
 }
 
 .photo-counter-badge.has-photos {
-  background: var(--gold-100);
-  color: var(--gold-600);
-  border: 1px solid var(--gold-300);
+  background: var(--gold-gradient);
+  color: var(--navy-950);
+  border-color: var(--gold-200);
 }
 
-/* Upload Dropzone */
+/* Upload Dropzone inside Panel */
 .upload-dropzone {
-  border: 2px dashed var(--slate-300);
+  margin: 16px;
+  border: 2px dashed var(--slate-400);
   border-radius: var(--radius-md);
-  padding: 18px 14px;
+  padding: 20px 14px;
   text-align: center;
-  background: var(--slate-50);
+  background: #f8fafc;
   transition: all 0.15s ease;
-  margin-bottom: 16px;
   cursor: pointer;
 }
 
@@ -779,26 +806,26 @@ body {
 }
 
 .dropzone-icon {
-  font-size: 30px;
+  font-size: 32px;
   margin-bottom: 6px;
 }
 
 .dropzone-prompt {
   font-size: 13px;
   font-weight: 800;
-  color: var(--navy-800);
+  color: var(--navy-900);
   margin-bottom: 4px;
 }
 
 .dropzone-hint {
   font-size: 11px;
-  color: var(--slate-500);
+  color: var(--slate-600);
   margin-bottom: 12px;
 }
 
 .upload-buttons {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
 }
@@ -809,13 +836,13 @@ body {
   border: 1px solid var(--gold-500);
   font-size: 12px;
   font-weight: 800;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 6px rgba(12, 35, 64, 0.2);
+  box-shadow: 0 2px 6px rgba(12, 35, 64, 0.25);
   transition: all 0.15s ease;
 }
 
@@ -829,8 +856,8 @@ body {
   color: var(--navy-950);
   border: 1px solid var(--gold-200);
   font-size: 12px;
-  font-weight: 800;
-  padding: 8px 14px;
+  font-weight: 900;
+  padding: 8px 16px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: inline-flex;
@@ -854,7 +881,8 @@ body {
 .thumbnails-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 12px;
+  padding: 0 16px 16px;
 }
 
 @media (min-width: 500px) {
@@ -866,7 +894,7 @@ body {
 .photo-thumb-card {
   position: relative;
   background: var(--white);
-  border: 1px solid var(--slate-200);
+  border: 1px solid var(--slate-300);
   border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -917,7 +945,7 @@ body {
   right: 6px;
   width: 26px;
   height: 26px;
-  background: rgba(220, 38, 38, 0.9);
+  background: rgba(220, 38, 38, 0.95);
   color: var(--white);
   border: none;
   border-radius: 50%;
@@ -927,7 +955,7 @@ body {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .thumb-btn-remove:hover {
@@ -938,24 +966,26 @@ body {
 .thumb-caption {
   padding: 4px 6px;
   font-size: 10px;
-  color: var(--slate-700);
+  color: var(--slate-800);
   background: var(--white);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-top: 1px solid var(--slate-100);
+  border-top: 1px solid var(--slate-200);
   font-weight: 600;
 }
 
 /* Empty thumbnails state */
 .empty-thumbs-notice {
-  padding: 20px;
+  padding: 16px;
   text-align: center;
-  color: var(--slate-400);
+  color: var(--slate-500);
   font-size: 12px;
   font-style: italic;
-  border: 1px dashed var(--slate-200);
+  border: 1px dashed var(--slate-300);
   border-radius: var(--radius-sm);
+  background: var(--subtle-bg);
+  margin: 0 16px 16px;
 }
 
 /* ==========================================================================
@@ -969,7 +999,7 @@ body {
   background: linear-gradient(135deg, var(--navy-950) 0%, var(--navy-900) 100%);
   border-top: 2px solid var(--gold-500);
   padding: 12px 16px;
-  box-shadow: 0 -4px 20px rgba(7, 23, 43, 0.4);
+  box-shadow: 0 -4px 20px rgba(7, 23, 43, 0.45);
   z-index: 100;
 }
 
@@ -1038,7 +1068,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 15px rgba(197, 155, 39, 0.5);
+  box-shadow: 0 4px 16px rgba(197, 155, 39, 0.5);
   transition: all 0.15s ease;
   user-select: none;
 }
@@ -1146,13 +1176,13 @@ body {
 .modal-body {
   padding: 20px;
   font-size: 14px;
-  color: var(--slate-700);
+  color: var(--slate-800);
 }
 
 .modal-footer {
   padding: 14px 20px;
-  background: var(--slate-50);
-  border-top: 1px solid var(--slate-200);
+  background: var(--subtle-bg);
+  border-top: 1px solid var(--slate-300);
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -1182,13 +1212,13 @@ body {
 .gen-status-text {
   font-size: 16px;
   font-weight: 800;
-  color: var(--navy-800);
+  color: var(--navy-900);
   margin-bottom: 6px;
 }
 
 .gen-sub-text {
   font-size: 12px;
-  color: var(--slate-500);
+  color: var(--slate-600);
 }
 
 /* Lightbox Modal */
@@ -1276,18 +1306,18 @@ body {
 /* Guide Card */
 .guide-card {
   background: var(--white);
-  border: 1px solid var(--slate-200);
-  border-top: 3px solid var(--gold-500);
+  border: 1px solid var(--slate-300);
+  border-top: 4px solid var(--gold-500);
   border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .guide-title {
   font-size: 14px;
   font-weight: 800;
-  color: var(--navy-800);
+  color: var(--navy-900);
   margin-bottom: 10px;
   display: flex;
   align-items: center;
@@ -1309,14 +1339,15 @@ body {
 }
 
 .guide-step-item {
-  background: var(--slate-50);
+  background: var(--subtle-bg);
+  border: 1px solid var(--slate-300);
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--gold-500);
+  border-left: 4px solid var(--gold-500);
 }
 
 .guide-step-item strong {
-  color: var(--navy-800);
+  color: var(--navy-900);
   display: block;
   margin-bottom: 2px;
 }
@@ -1338,8 +1369,8 @@ body {
 
 .history-card {
   background: var(--white);
-  border: 1px solid var(--slate-200);
-  border-left: 4px solid var(--gold-500);
+  border: 1px solid var(--slate-300);
+  border-left: 5px solid var(--gold-500);
   border-radius: var(--radius-md);
   padding: 14px 16px;
   display: flex;
@@ -1370,12 +1401,12 @@ body {
 .history-date-badge {
   font-size: 14px;
   font-weight: 800;
-  color: var(--navy-800);
+  color: var(--navy-900);
 }
 
 .history-time-tag {
   font-size: 11px;
-  color: var(--slate-400);
+  color: var(--slate-500);
 }
 
 .history-stats-row {
@@ -1383,12 +1414,13 @@ body {
   align-items: center;
   gap: 10px;
   font-size: 12px;
-  color: var(--slate-600);
+  color: var(--slate-700);
   flex-wrap: wrap;
 }
 
 .history-stat-tag {
-  background: var(--slate-100);
+  background: var(--subtle-bg);
+  border: 1px solid var(--slate-300);
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 700;
@@ -1457,5 +1489,5 @@ body {
 .empty-history-box {
   text-align: center;
   padding: 30px 20px;
-  color: var(--slate-500);
+  color: var(--slate-600);
 }
