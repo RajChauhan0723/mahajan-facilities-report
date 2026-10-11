@@ -1,0 +1,1258 @@
+import './style.css';
+import { saveDraft, loadDraft, clearDraft } from './db.js';
+import { processImageFile, formatBytes } from './imageProcessor.js';
+import { generateDailyReportPDF, formatDisplayDate } from './pdfGenerator.js';
+
+// Configuration & 13 Building Floor Definitions
+const FLOORS_CONFIG = [
+  { id: 'ground', name: 'Ground Floor' },
+  { id: '1st', name: '1st Floor' },
+  { id: '2nd', name: '2nd Floor' },
+  { id: '3rd', name: '3rd Floor' },
+  { id: '4th', name: '4th Floor' },
+  { id: '5th', name: '5th Floor' },
+  { id: '6th', name: '6th Floor' },
+  { id: '7th', name: '7th Floor' },
+  { id: '8th', name: '8th Floor' },
+  { id: '9th', name: '9th Floor' },
+  { id: '10th', name: '10th Floor' },
+  { id: '11th', name: '11th Floor' },
+  { id: '12th', name: '12th Floor' }
+];
+
+const MAX_PHOTOS_PER_SECTION = 20;
+
+// Application State
+const state = {
+  reportDate: getTodayYMD(),
+  floors: FLOORS_CONFIG.map((f) => ({
+    id: f.id,
+    name: f.name,
+    generalPhotos: [],
+    washroomPhotos: []
+  })),
+  expandedFloors: new Set([FLOORS_CONFIG[0].id]), // Ground floor open by default
+  lastGeneratedPdf: null,
+  isGenerating: false,
+  activeLightboxImg: null
+};
+
+// PWA Install State
+let deferredInstallPrompt = null;
+const isStandaloneApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btnInstall = document.getElementById('btn-install-app');
+  if (btnInstall) {
+    btnInstall.style.display = 'inline-flex';
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  showToast('App installed to your phone home screen!', 'success');
+  const btnInstall = document.getElementById('btn-install-app');
+  if (btnInstall) btnInstall.style.display = 'none';
+});
+
+/**
+ * Returns today's date in YYYY-MM-DD
+ */
+function getTodayYMD() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Shows a brief toast notification
+ */
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  let icon = 'ℹ️';
+  if (type === 'success') icon = '✅';
+  if (type === 'error') icon = '❌';
+  if (type === 'warning') icon = '⚠️';
+
+  toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+/**
+ * Recalculates stats from state
+ */
+function getStats() {
+  let totalGeneral = 0;
+  let totalWashroom = 0;
+  let floorsWithPhotos = 0;
+
+  state.floors.forEach((f) => {
+    const gen = f.generalPhotos.length;
+    const wash = f.washroomPhotos.length;
+    totalGeneral += gen;
+    totalWashroom += wash;
+    if (gen > 0 || wash > 0) {
+      floorsWithPhotos++;
+    }
+  });
+
+  return {
+    totalFloors: state.floors.length,
+    floorsWithPhotos,
+    totalGeneral,
+    totalWashroom,
+    grandTotal: totalGeneral + totalWashroom
+  };
+}
+
+/**
+ * Auto-saves state to IndexedDB
+ */
+async function autoSaveState() {
+  try {
+    await saveDraft({
+      reportDate: state.reportDate,
+      floors: state.floors,
+      savedAt: Date.now()
+    });
+    updateAutosaveIndicator();
+  } catch (err) {
+    console.error('Error auto-saving:', err);
+  }
+}
+
+function updateAutosaveIndicator() {
+  const el = document.getElementById('autosave-text');
+  if (el) {
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    el.textContent = `Draft saved in local IndexedDB storage (${time})`;
+  }
+}
+
+/**
+ * Main Render Application Shell
+ */
+function renderApp() {
+  const app = document.getElementById('app');
+  const stats = getStats();
+  const displayDate = formatDisplayDate(state.reportDate);
+
+  app.innerHTML = `
+    <!-- Top Header Banner -->
+    <header class="app-header">
+      <div class="container">
+        <div class="header-inner">
+          <div class="brand-section">
+            <img src="/logo.png" alt="Mahajan Facilities" class="brand-logo-img" />
+            <div class="brand-titles">
+              <h1>Mahajan Facilities</h1>
+              <p>Daily Housekeeping Cleaning Report</p>
+            </div>
+          </div>
+          
+          <div class="header-actions">
+            <!-- PWA Mobile App Install Controls -->
+            ${
+              isStandaloneApp
+                ? `<span class="badge-standalone">📱 App Installed</span>`
+                : `<button id="btn-install-app" class="btn-install-app">
+                    <span>📲</span> Install on Phone
+                   </button>`
+            }
+
+            <button id="btn-cloud-guide" class="btn-ghost-sm" style="color: #93c5fd; border-color: rgba(255,255,255,0.3); padding: 7px 12px;">
+              <span>🌐</span> Access Anywhere
+            </button>
+
+            <!-- Date Picker Card -->
+            <div class="date-picker-card">
+              <label for="report-date-input">Report Date:</label>
+              <div class="date-input-wrapper">
+                <input 
+                  type="date" 
+                  id="report-date-input" 
+                  class="date-input" 
+                  value="${state.reportDate}"
+                  max="2099-12-31"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- KPI Stats Bar -->
+      <section class="dashboard-kpis">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Report Date</span>
+            <span class="kpi-value" id="kpi-date-val">${displayDate}</span>
+            <span class="kpi-sub">Inspection Day</span>
+          </div>
+
+          <div class="kpi-card">
+            <span class="kpi-label">Total Floors</span>
+            <span class="kpi-value">13</span>
+            <span class="kpi-sub">Ground to 12th Floor</span>
+          </div>
+
+          <div class="kpi-card kpi-accent-blue">
+            <span class="kpi-label">General Photos</span>
+            <span class="kpi-value" id="kpi-general-val">${stats.totalGeneral}</span>
+            <span class="kpi-sub">Max 260 total</span>
+          </div>
+
+          <div class="kpi-card kpi-accent-teal">
+            <span class="kpi-label">Washroom Photos</span>
+            <span class="kpi-value" id="kpi-washroom-val">${stats.totalWashroom}</span>
+            <span class="kpi-sub">Max 260 total</span>
+          </div>
+
+          <div class="kpi-card">
+            <span class="kpi-label">Total Uploaded</span>
+            <span class="kpi-value" id="kpi-total-val">${stats.grandTotal}</span>
+            <span class="kpi-sub">Cap: 520 photos</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Progress Tracking Banner -->
+      <section class="progress-container">
+        <div class="progress-header">
+          <span>Inspection Progress: <strong id="progress-floor-count">${stats.floorsWithPhotos} of 13 Floors Documented</strong></span>
+          <span id="progress-percent">${Math.round((stats.floorsWithPhotos / 13) * 100)}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill-bar" style="width: ${(stats.floorsWithPhotos / 13) * 100}%;"></div>
+        </div>
+      </section>
+
+      <!-- Autosave Notice -->
+      <div class="autosave-bar">
+        <div class="autosave-status">
+          <div class="status-dot"></div>
+          <span id="autosave-text">Draft saved in local IndexedDB storage</span>
+        </div>
+        <div>
+          <button id="btn-clear-all" class="btn-ghost-sm" style="color: #b91c1c;">Clear All Photos</button>
+        </div>
+      </div>
+
+      <!-- Quick Jump Navigation -->
+      <section class="quick-nav-container">
+        <div class="quick-nav-header">
+          <h2 class="section-heading">Floor Navigation (13 Levels)</h2>
+          <div class="nav-actions">
+            <button id="btn-expand-all" class="btn-ghost-sm">Expand All</button>
+            <button id="btn-collapse-all" class="btn-ghost-sm">Collapse All</button>
+          </div>
+        </div>
+        <div class="floor-pills-scroll" id="floor-pills-container">
+          ${renderQuickNavPills()}
+        </div>
+      </section>
+
+      <!-- Floor Cards List -->
+      <section id="floor-cards-container">
+        ${renderFloorCards()}
+      </section>
+
+      <!-- Field Instructions Card -->
+      <section class="guide-card">
+        <h3 class="guide-title">📱 Field Instructions for Cleaning Managers</h3>
+        <div class="guide-steps">
+          <div class="guide-step-item">
+            <strong>1. Select Report Date</strong>
+            Confirm the inspection date at the top before starting your round.
+          </div>
+          <div class="guide-step-item">
+            <strong>2. Snap or Pick Photos</strong>
+            Use "Camera" to take live site photos or "Upload Photos" from gallery. Up to 20 photos per section.
+          </div>
+          <div class="guide-step-item">
+            <strong>3. Automatic Draft Safe</strong>
+            Photos are saved offline in your phone storage. Leaving or refreshing the tab will not lose photos.
+          </div>
+          <div class="guide-step-item">
+            <strong>4. Generate & Share PDF</strong>
+            Tap "Generate PDF" below to create a client-ready A4 PDF document ready for WhatsApp or email.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Sticky Bottom Action Bar -->
+    <div class="sticky-action-bar">
+      <div class="action-bar-inner">
+        <div class="action-bar-stats">
+          <span class="stat-chip" id="bar-total-chip">📸 ${stats.grandTotal} Photos</span>
+          <span class="stat-chip" id="bar-floors-chip">🏢 ${stats.floorsWithPhotos}/13 Floors</span>
+        </div>
+        <div class="action-bar-buttons">
+          <button id="btn-generate-pdf" class="btn-primary-generate" ${stats.grandTotal === 0 ? 'title="Upload at least 1 photo to generate PDF"' : ''}>
+            <span>📄</span> Generate Daily PDF
+          </button>
+          <button id="btn-download-pdf" class="btn-download-pdf" style="display: ${state.lastGeneratedPdf ? 'inline-flex' : 'none'};">
+            <span>📥</span> Download PDF
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generation Progress Modal -->
+    <div id="modal-generation" class="modal-overlay">
+      <div class="modal-dialog">
+        <div class="modal-body gen-progress-box">
+          <div class="spinner"></div>
+          <h3 id="gen-modal-status" class="gen-status-text">Preparing Daily Cleaning Report...</h3>
+          <p id="gen-modal-sub" class="gen-sub-text">Compressing high-resolution images & assembling A4 grid pages</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clear All Confirmation Modal -->
+    <div id="modal-clear-confirm" class="modal-overlay">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">Clear All Uploaded Photos?</h3>
+          <button class="modal-close-btn" id="btn-close-clear-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>This will permanently remove all photos across all 13 floors and reset your report draft.</p>
+          <p style="margin-top: 10px; font-weight: 700; color: #b91c1c;">Are you sure you want to proceed?</p>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-cancel-clear" class="btn-ghost-sm" style="padding: 8px 16px;">Cancel</button>
+          <button id="btn-confirm-clear" class="btn-danger-outline" style="background: #ef4444; color: white;">Yes, Clear All Photos</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PWA Install Guide Modal -->
+    <div id="modal-install-guide" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 520px;">
+        <div class="modal-header">
+          <h3 class="modal-title">📲 Install App on Phone Home Screen</h3>
+          <button class="modal-close-btn" id="btn-close-install-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 12px; font-weight: 600; color: var(--navy-800);">Install Mahajan Facilities as a standalone mobile app on your phone:</p>
+          
+          <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;">
+            <h4 style="font-size: 13px; color: var(--navy-800); margin-bottom: 6px;">🤖 Android (Chrome / Samsung Internet):</h4>
+            <ol style="margin-left: 18px; font-size: 12px; color: var(--slate-700); line-height: 1.6;">
+              <li>Tap the <strong>3 dots menu (⋮)</strong> at top right of Chrome.</li>
+              <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+              <li>Confirm "Install". The <strong>Mahajan Facilities</strong> app icon will appear right on your phone's home screen!</li>
+            </ol>
+          </div>
+
+          <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;">
+            <h4 style="font-size: 13px; color: var(--navy-800); margin-bottom: 6px;">🍏 iPhone / iPad (Safari):</h4>
+            <ol style="margin-left: 18px; font-size: 12px; color: var(--slate-700); line-height: 1.6;">
+              <li>Tap the <strong>Share button (Square with up arrow)</strong> at bottom.</li>
+              <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+            </ol>
+          </div>
+
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-sm); padding: 10px; font-size: 12px; color: #1e40af;">
+            ✨ <strong>Benefits:</strong> Opens in full screen without browser bars, launches in 1 tap, and works completely offline even in basements!
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-trigger-native-install" class="btn-install-app" style="display: none;">
+            <span>⚡</span> Install Directly
+          </button>
+          <button id="btn-close-install-guide" class="btn-ghost-sm" style="padding: 8px 16px;">Got It</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cloud / Access Anywhere Modal -->
+    <div id="modal-cloud-guide" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 560px;">
+        <div class="modal-header">
+          <h3 class="modal-title">🌐 Run Anywhere (Permanent Public URL)</h3>
+          <button class="modal-close-btn" id="btn-close-cloud-modal">&times;</button>
+        </div>
+        <div class="modal-body" style="font-size: 13px; line-height: 1.6;">
+          <p style="margin-bottom: 12px; font-weight: 600; color: var(--navy-800);">
+            To open this app from <strong>any phone or location 24/7 without needing your laptop</strong>, you can deploy it to free cloud hosting in 1 minute:
+          </p>
+
+          <div style="background: #f8fafc; border: 1px solid var(--slate-200); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+            <strong style="color: var(--navy-800); display: block; margin-bottom: 4px;">🚀 Free Option 1: Vercel (Recommended - 30 seconds)</strong>
+            <p style="font-size: 12px; color: var(--slate-600); margin-bottom: 6px;">Deploy directly with one command in your terminal:</p>
+            <code style="display: block; background: #0f172a; color: #38bdf8; padding: 6px 10px; border-radius: 4px; font-size: 12px;">npx vercel</code>
+            <p style="font-size: 11px; color: var(--slate-500); margin-top: 4px;">You get a permanent free link like <code>https://mahajan-report.vercel.app</code> that works everywhere!</p>
+          </div>
+
+          <div style="background: #f8fafc; border: 1px solid var(--slate-200); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+            <strong style="color: var(--navy-800); display: block; margin-bottom: 4px;">⚡ Free Option 2: Netlify Drop (Zero code)</strong>
+            <p style="font-size: 12px; color: var(--slate-600);">
+              1. Run <code>npm run build</code> (already created in <code>dist</code> folder).<br>
+              2. Go to <strong>app.netlify.com/drop</strong> on any browser.<br>
+              3. Drag and drop the <code>dist</code> folder. Done!
+            </p>
+          </div>
+
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; font-size: 12px; color: #166534;">
+            🔒 <strong>100% Secure & Private:</strong> The app processes all photos right inside the phone's browser and generates PDFs locally. No photos are ever uploaded to any third-party servers.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-close-cloud-guide" class="btn-ghost-sm" style="padding: 8px 16px;">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Lightbox Modal -->
+    <div id="modal-lightbox" class="modal-overlay">
+      <div class="lightbox-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title" id="lightbox-title">Photo Preview</h3>
+          <button class="modal-close-btn" id="btn-close-lightbox">&times;</button>
+        </div>
+        <div class="lightbox-img-container">
+          <img id="lightbox-img" src="" alt="Photo Preview" />
+        </div>
+      </div>
+    </div>
+
+    <!-- PDF Success / Preview Modal -->
+    <div id="modal-pdf-success" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 560px;">
+        <div class="modal-header">
+          <h3 class="modal-title">🎉 Report PDF Generated Successfully!</h3>
+          <button class="modal-close-btn" id="btn-close-pdf-success">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align: center; padding: 24px 20px;">
+          <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
+          <h4 id="pdf-success-filename" style="font-size: 16px; color: var(--navy-800); margin-bottom: 6px; word-break: break-all;"></h4>
+          <p id="pdf-success-details" style="font-size: 13px; color: var(--slate-500); margin-bottom: 20px;"></p>
+          
+          <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button id="btn-modal-download" class="btn-download-pdf" style="font-size: 14px; padding: 10px 20px;">
+              <span>📥</span> Download PDF Now
+            </button>
+            <button id="btn-modal-open" class="btn-upload" style="background: var(--navy-800); font-size: 14px; padding: 10px 20px;">
+              <span>👁️</span> Open in New Tab
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  attachEventListeners();
+}
+
+/**
+ * Renders Quick Nav Pills
+ */
+function renderQuickNavPills() {
+  return state.floors
+    .map((floor) => {
+      const genCount = floor.generalPhotos.length;
+      const washCount = floor.washroomPhotos.length;
+      const total = genCount + washCount;
+      const hasPhotos = total > 0;
+
+      return `
+        <div class="floor-pill ${hasPhotos ? 'has-photos' : ''}" data-target-floor="${floor.id}">
+          <span>${floor.name}</span>
+          <span class="pill-count">${total}</span>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+/**
+ * Renders all 13 Floor Cards
+ */
+function renderFloorCards() {
+  return state.floors
+    .map((floor, index) => {
+      const isExpanded = state.expandedFloors.has(floor.id);
+      const genCount = floor.generalPhotos.length;
+      const washCount = floor.washroomPhotos.length;
+      const total = genCount + washCount;
+
+      return `
+        <div class="floor-card ${isExpanded ? 'expanded' : ''}" id="floor-card-${floor.id}" data-floor-id="${floor.id}">
+          <!-- Floor Card Header -->
+          <div class="floor-card-header" data-toggle-floor="${floor.id}">
+            <div class="floor-header-left">
+              <span class="floor-num-badge">LEVEL ${index + 1}</span>
+              <h3 class="floor-title">${floor.name}</h3>
+              <div class="floor-header-badges">
+                <span class="badge-pill ${genCount > 0 ? 'badge-gen' : 'badge-empty'}">
+                  General: ${genCount}/${MAX_PHOTOS_PER_SECTION}
+                </span>
+                <span class="badge-pill ${washCount > 0 ? 'badge-wash' : 'badge-empty'}">
+                  Washroom: ${washCount}/${MAX_PHOTOS_PER_SECTION}
+                </span>
+                <span class="badge-pill ${total > 0 ? 'badge-gen' : 'badge-empty'}">
+                  Total: ${total}/40
+                </span>
+              </div>
+            </div>
+            <div class="floor-chevron">▼</div>
+          </div>
+
+          <!-- Floor Card Body -->
+          <div class="floor-card-body">
+            <div class="sections-row">
+              <!-- Section A: General Cleaning -->
+              ${renderSectionPanel(floor, 'general', 'Section A — General Cleaning Photos', 'panel-general', '🧹', 'blue')}
+              
+              <!-- Section B: Washroom Cleaning -->
+              ${renderSectionPanel(floor, 'washroom', 'Section B — Washroom Cleaning Photos', 'panel-washroom', '🧻', 'teal')}
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+/**
+ * Renders a single Section Panel (General or Washroom)
+ */
+function renderSectionPanel(floor, sectionKey, title, panelClass, icon, colorTheme) {
+  const photos = sectionKey === 'general' ? floor.generalPhotos : floor.washroomPhotos;
+  const count = photos.length;
+  const isFull = count >= MAX_PHOTOS_PER_SECTION;
+  const badgeClass = isFull ? 'limit-reached' : count > 0 ? 'has-photos' : '';
+
+  return `
+    <div class="section-panel ${panelClass}">
+      <div class="section-panel-header">
+        <div class="section-panel-title">
+          <div class="section-icon-box">${icon}</div>
+          <span>${title}</span>
+        </div>
+        <span class="photo-counter-badge ${badgeClass}" id="badge-${floor.id}-${sectionKey}">
+          ${count} / ${MAX_PHOTOS_PER_SECTION} Photos
+        </span>
+      </div>
+
+      <!-- Upload Controls / Dropzone -->
+      <div class="upload-dropzone" data-floor="${floor.id}" data-section="${sectionKey}" id="dropzone-${floor.id}-${sectionKey}">
+        <div class="dropzone-icon">📷</div>
+        <p class="dropzone-prompt">${isFull ? 'Section limit reached (20/20)' : 'Upload or Drag Cleaning Photos Here'}</p>
+        <p class="dropzone-hint">Accepts JPG, JPEG, PNG, WEBP (Max 20 photos)</p>
+
+        <div class="upload-buttons">
+          <button type="button" class="btn-upload" data-action="upload-files" data-floor="${floor.id}" data-section="${sectionKey}" ${isFull ? 'disabled' : ''}>
+            <span>📁</span> Select Photos
+          </button>
+          <button type="button" class="btn-camera" data-action="upload-camera" data-floor="${floor.id}" data-section="${sectionKey}" ${isFull ? 'disabled' : ''}>
+            <span>📸</span> Camera
+          </button>
+        </div>
+
+        <!-- Hidden File Inputs -->
+        <input 
+          type="file" 
+          id="file-input-${floor.id}-${sectionKey}" 
+          class="hidden-file-input" 
+          accept="image/jpeg,image/jpg,image/png,image/webp" 
+          multiple 
+          data-floor="${floor.id}" 
+          data-section="${sectionKey}"
+        />
+        <input 
+          type="file" 
+          id="camera-input-${floor.id}-${sectionKey}" 
+          class="hidden-file-input" 
+          accept="image/jpeg,image/jpg,image/png,image/webp" 
+          capture="environment" 
+          data-floor="${floor.id}" 
+          data-section="${sectionKey}"
+        />
+      </div>
+
+      <!-- Thumbnails Grid -->
+      <div class="thumbnails-grid" id="grid-${floor.id}-${sectionKey}">
+        ${renderThumbnailCards(floor.id, sectionKey, photos)}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renders thumbnail cards for a photo array
+ */
+function renderThumbnailCards(floorId, sectionKey, photos) {
+  if (!photos || photos.length === 0) {
+    return `<div class="empty-thumbs-notice" style="grid-column: 1 / -1;">No photos uploaded yet for this section.</div>`;
+  }
+
+  return photos
+    .map((photo, index) => {
+      const seqNumber = String(index + 1).padStart(2, '0');
+      const sizeStr = formatBytes(photo.originalSize);
+      return `
+        <div class="photo-thumb-card" data-photo-id="${photo.id}">
+          <div class="thumb-img-wrapper" data-action="lightbox" data-url="${photo.dataUrl}" data-title="${photo.name}" data-seq="#${seqNumber}">
+            <img src="${photo.dataUrl}" alt="${photo.name}" class="thumb-img" loading="lazy" />
+            <div class="thumb-seq-badge">#${seqNumber}</div>
+            <button type="button" class="thumb-btn-remove" data-action="remove-photo" data-floor="${floorId}" data-section="${sectionKey}" data-photo-id="${photo.id}" title="Remove Photo">&times;</button>
+          </div>
+          <div class="thumb-caption" title="${photo.name} (${sizeStr})">${photo.name}</div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+/**
+ * Attach DOM Event Handlers
+ */
+function attachEventListeners() {
+  // Date Picker change
+  const dateInput = document.getElementById('report-date-input');
+  if (dateInput) {
+    dateInput.addEventListener('change', (e) => {
+      state.reportDate = e.target.value || getTodayYMD();
+      const formatted = formatDisplayDate(state.reportDate);
+      const kpiDate = document.getElementById('kpi-date-val');
+      if (kpiDate) kpiDate.textContent = formatted;
+      autoSaveState();
+    });
+  }
+
+  // PWA Install Button Click
+  const btnInstallApp = document.getElementById('btn-install-app');
+  const modalInstall = document.getElementById('modal-install-guide');
+  const btnCloseInstallModal = document.getElementById('btn-close-install-modal');
+  const btnCloseInstallGuide = document.getElementById('btn-close-install-guide');
+  const btnTriggerNativeInstall = document.getElementById('btn-trigger-native-install');
+
+  if (btnInstallApp) {
+    btnInstallApp.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          showToast('Mahajan Facilities App installed successfully!', 'success');
+          btnInstallApp.style.display = 'none';
+        }
+        deferredInstallPrompt = null;
+      } else {
+        if (modalInstall) modalInstall.classList.add('active');
+      }
+    });
+  }
+
+  if (modalInstall) {
+    [btnCloseInstallModal, btnCloseInstallGuide].forEach((btn) => {
+      if (btn) btn.addEventListener('click', () => modalInstall.classList.remove('active'));
+    });
+    modalInstall.addEventListener('click', (e) => {
+      if (e.target === modalInstall) modalInstall.classList.remove('active');
+    });
+  }
+
+  if (btnTriggerNativeInstall && deferredInstallPrompt) {
+    btnTriggerNativeInstall.style.display = 'inline-flex';
+    btnTriggerNativeInstall.addEventListener('click', () => {
+      deferredInstallPrompt.prompt();
+      modalInstall.classList.remove('active');
+    });
+  }
+
+  // Cloud / Online Access Guide Button Click
+  const btnCloudGuide = document.getElementById('btn-cloud-guide');
+  const modalCloud = document.getElementById('modal-cloud-guide');
+  const btnCloseCloudModal = document.getElementById('btn-close-cloud-modal');
+  const btnCloseCloudGuide = document.getElementById('btn-close-cloud-guide');
+
+  if (btnCloudGuide && modalCloud) {
+    btnCloudGuide.addEventListener('click', () => modalCloud.classList.add('active'));
+    [btnCloseCloudModal, btnCloseCloudGuide].forEach((btn) => {
+      if (btn) btn.addEventListener('click', () => modalCloud.classList.remove('active'));
+    });
+    modalCloud.addEventListener('click', (e) => {
+      if (e.target === modalCloud) modalCloud.classList.remove('active');
+    });
+  }
+
+  // Quick Nav Pills Click
+  document.querySelectorAll('[data-target-floor]').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      const floorId = pill.dataset.targetFloor;
+      state.expandedFloors.add(floorId);
+      updateFloorAccordionVisual(floorId, true);
+      const targetCard = document.getElementById(`floor-card-${floorId}`);
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Accordion Header Toggle
+  document.querySelectorAll('[data-toggle-floor]').forEach((header) => {
+    header.addEventListener('click', () => {
+      const floorId = header.dataset.toggleFloor;
+      const isExpanded = state.expandedFloors.has(floorId);
+      if (isExpanded) {
+        state.expandedFloors.delete(floorId);
+        updateFloorAccordionVisual(floorId, false);
+      } else {
+        state.expandedFloors.add(floorId);
+        updateFloorAccordionVisual(floorId, true);
+      }
+    });
+  });
+
+  // Expand All / Collapse All
+  const btnExpandAll = document.getElementById('btn-expand-all');
+  if (btnExpandAll) {
+    btnExpandAll.addEventListener('click', () => {
+      state.floors.forEach((f) => state.expandedFloors.add(f.id));
+      state.floors.forEach((f) => updateFloorAccordionVisual(f.id, true));
+    });
+  }
+
+  const btnCollapseAll = document.getElementById('btn-collapse-all');
+  if (btnCollapseAll) {
+    btnCollapseAll.addEventListener('click', () => {
+      state.expandedFloors.clear();
+      state.floors.forEach((f) => updateFloorAccordionVisual(f.id, false));
+    });
+  }
+
+  // File & Camera Upload Button Clicks
+  document.querySelectorAll('[data-action="upload-files"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const floorId = btn.dataset.floor;
+      const sectionKey = btn.dataset.section;
+      const fileInput = document.getElementById(`file-input-${floorId}-${sectionKey}`);
+      if (fileInput) fileInput.click();
+    });
+  });
+
+  document.querySelectorAll('[data-action="upload-camera"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const floorId = btn.dataset.floor;
+      const sectionKey = btn.dataset.section;
+      const camInput = document.getElementById(`camera-input-${floorId}-${sectionKey}`);
+      if (camInput) camInput.click();
+    });
+  });
+
+  // File Input Change Handlers
+  document.querySelectorAll('.hidden-file-input').forEach((input) => {
+    input.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      const floorId = input.dataset.floor;
+      const sectionKey = input.dataset.section;
+      if (files.length > 0) {
+        await handleFilesUpload(floorId, sectionKey, files);
+      }
+      input.value = '';
+    });
+  });
+
+  // Drag and Drop support on dropzones
+  document.querySelectorAll('.upload-dropzone').forEach((dropzone) => {
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('dragover');
+      });
+    });
+
+    dropzone.addEventListener('drop', async (e) => {
+      const files = Array.from(e.dataTransfer.files || []);
+      const floorId = dropzone.dataset.floor;
+      const sectionKey = dropzone.dataset.section;
+      if (files.length > 0) {
+        await handleFilesUpload(floorId, sectionKey, files);
+      }
+    });
+  });
+
+  // Photo Removal & Lightbox
+  document.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('[data-action="remove-photo"]');
+    if (removeBtn) {
+      e.stopPropagation();
+      const floorId = removeBtn.dataset.floor;
+      const sectionKey = removeBtn.dataset.section;
+      const photoId = removeBtn.dataset.photoId;
+      removeSinglePhoto(floorId, sectionKey, photoId);
+      return;
+    }
+
+    const lightboxTrigger = e.target.closest('[data-action="lightbox"]');
+    if (lightboxTrigger) {
+      const url = lightboxTrigger.dataset.url;
+      const title = lightboxTrigger.dataset.title;
+      const seq = lightboxTrigger.dataset.seq;
+      openLightbox(url, `${seq} - ${title}`);
+      return;
+    }
+  });
+
+  // Lightbox Close
+  const btnCloseLightbox = document.getElementById('btn-close-lightbox');
+  const modalLightbox = document.getElementById('modal-lightbox');
+  if (btnCloseLightbox && modalLightbox) {
+    btnCloseLightbox.addEventListener('click', () => modalLightbox.classList.remove('active'));
+    modalLightbox.addEventListener('click', (e) => {
+      if (e.target === modalLightbox) modalLightbox.classList.remove('active');
+    });
+  }
+
+  // Clear All Modal
+  const btnClearAll = document.getElementById('btn-clear-all');
+  const modalClear = document.getElementById('modal-clear-confirm');
+  const btnCancelClear = document.getElementById('btn-cancel-clear');
+  const btnCloseClear = document.getElementById('btn-close-clear-modal');
+  const btnConfirmClear = document.getElementById('btn-confirm-clear');
+
+  if (btnClearAll && modalClear) {
+    btnClearAll.addEventListener('click', () => modalClear.classList.add('active'));
+    [btnCancelClear, btnCloseClear].forEach((btn) => {
+      if (btn) btn.addEventListener('click', () => modalClear.classList.remove('active'));
+    });
+    modalClear.addEventListener('click', (e) => {
+      if (e.target === modalClear) modalClear.classList.remove('active');
+    });
+
+    if (btnConfirmClear) {
+      btnConfirmClear.addEventListener('click', async () => {
+        state.floors.forEach((f) => {
+          f.generalPhotos = [];
+          f.washroomPhotos = [];
+        });
+        state.lastGeneratedPdf = null;
+        await clearDraft();
+        modalClear.classList.remove('active');
+        refreshEntireUI();
+        showToast('All photos cleared successfully.', 'info');
+      });
+    }
+  }
+
+  // Generate PDF Action
+  const btnGenerate = document.getElementById('btn-generate-pdf');
+  if (btnGenerate) {
+    btnGenerate.addEventListener('click', handleGeneratePdfClick);
+  }
+
+  // Download PDF Action
+  const btnDownload = document.getElementById('btn-download-pdf');
+  if (btnDownload) {
+    btnDownload.addEventListener('click', handleDownloadPdfClick);
+  }
+
+  // PDF Success Modal actions
+  const btnCloseSuccess = document.getElementById('btn-close-pdf-success');
+  const modalSuccess = document.getElementById('modal-pdf-success');
+  const btnModalDownload = document.getElementById('btn-modal-download');
+  const btnModalOpen = document.getElementById('btn-modal-open');
+
+  if (btnCloseSuccess && modalSuccess) {
+    btnCloseSuccess.addEventListener('click', () => modalSuccess.classList.remove('active'));
+    modalSuccess.addEventListener('click', (e) => {
+      if (e.target === modalSuccess) modalSuccess.classList.remove('active');
+    });
+  }
+
+  if (btnModalDownload) {
+    btnModalDownload.addEventListener('click', () => {
+      handleDownloadPdfClick();
+      modalSuccess.classList.remove('active');
+    });
+  }
+
+  if (btnModalOpen) {
+    btnModalOpen.addEventListener('click', () => {
+      if (state.lastGeneratedPdf && state.lastGeneratedPdf.url) {
+        window.open(state.lastGeneratedPdf.url, '_blank');
+      }
+    });
+  }
+}
+
+/**
+ * Updates UI classes for Accordion visual state
+ */
+function updateFloorAccordionVisual(floorId, isExpanded) {
+  const card = document.getElementById(`floor-card-${floorId}`);
+  if (card) {
+    if (isExpanded) card.classList.add('expanded');
+    else card.classList.remove('expanded');
+  }
+}
+
+/**
+ * Handles multiple file uploads with strict 20-photo validation
+ */
+async function handleFilesUpload(floorId, sectionKey, files) {
+  const floor = state.floors.find((f) => f.id === floorId);
+  if (!floor) return;
+
+  const targetPhotos = sectionKey === 'general' ? floor.generalPhotos : floor.washroomPhotos;
+  const currentCount = targetPhotos.length;
+  const remainingSlots = MAX_PHOTOS_PER_SECTION - currentCount;
+
+  if (remainingSlots <= 0) {
+    showToast(`Maximum limit of ${MAX_PHOTOS_PER_SECTION} photos reached for this section.`, 'warning');
+    return;
+  }
+
+  // Separate valid files from invalid formats
+  const validFiles = [];
+  const invalidFiles = [];
+
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'webp'].includes(ext) || file.type.startsWith('image/')) {
+      validFiles.push(file);
+    } else {
+      invalidFiles.push(file.name);
+    }
+  }
+
+  if (invalidFiles.length > 0) {
+    showToast(`Skipped ${invalidFiles.length} unsupported file(s). Only JPG, JPEG, PNG, WEBP allowed.`, 'error');
+  }
+
+  if (validFiles.length === 0) return;
+
+  // Check 20 photo limit
+  const filesToProcess = validFiles.slice(0, remainingSlots);
+  const skippedCount = validFiles.length - filesToProcess.length;
+
+  if (skippedCount > 0) {
+    showToast(`Adding ${filesToProcess.length} photo(s). ${skippedCount} skipped (20 photos maximum per section).`, 'warning');
+  } else {
+    showToast(`Processing ${filesToProcess.length} image(s)...`, 'info');
+  }
+
+  // Process and downscale images concurrently
+  let addedCount = 0;
+  for (const file of filesToProcess) {
+    try {
+      const processed = await processImageFile(file);
+      targetPhotos.push(processed);
+      addedCount++;
+    } catch (err) {
+      showToast(`Error processing ${file.name}: ${err.message}`, 'error');
+    }
+  }
+
+  if (addedCount > 0) {
+    await autoSaveState();
+    refreshSectionUI(floorId, sectionKey);
+    updateGlobalStatsUI();
+    showToast(`Successfully added ${addedCount} photo(s) to ${floor.name}.`, 'success');
+  }
+}
+
+/**
+ * Removes an individual photo
+ */
+async function removeSinglePhoto(floorId, sectionKey, photoId) {
+  const floor = state.floors.find((f) => f.id === floorId);
+  if (!floor) return;
+
+  if (sectionKey === 'general') {
+    floor.generalPhotos = floor.generalPhotos.filter((p) => p.id !== photoId);
+  } else {
+    floor.washroomPhotos = floor.washroomPhotos.filter((p) => p.id !== photoId);
+  }
+
+  await autoSaveState();
+  refreshSectionUI(floorId, sectionKey);
+  updateGlobalStatsUI();
+  showToast('Photo removed.', 'info');
+}
+
+/**
+ * Refreshes only the affected section inside a floor card
+ */
+function refreshSectionUI(floorId, sectionKey) {
+  const floor = state.floors.find((f) => f.id === floorId);
+  if (!floor) return;
+
+  const photos = sectionKey === 'general' ? floor.generalPhotos : floor.washroomPhotos;
+  const count = photos.length;
+  const isFull = count >= MAX_PHOTOS_PER_SECTION;
+
+  // 1. Update Grid
+  const grid = document.getElementById(`grid-${floorId}-${sectionKey}`);
+  if (grid) {
+    grid.innerHTML = renderThumbnailCards(floorId, sectionKey, photos);
+  }
+
+  // 2. Update Badge
+  const badge = document.getElementById(`badge-${floorId}-${sectionKey}`);
+  if (badge) {
+    badge.className = `photo-counter-badge ${isFull ? 'limit-reached' : count > 0 ? 'has-photos' : ''}`;
+    badge.textContent = `${count} / ${MAX_PHOTOS_PER_SECTION} Photos`;
+  }
+
+  // 3. Update Dropzone buttons enabled/disabled state
+  const dropzone = document.getElementById(`dropzone-${floorId}-${sectionKey}`);
+  if (dropzone) {
+    const promptEl = dropzone.querySelector('.dropzone-prompt');
+    if (promptEl) {
+      promptEl.textContent = isFull ? 'Section limit reached (20/20)' : 'Upload or Drag Cleaning Photos Here';
+    }
+    dropzone.querySelectorAll('button').forEach((b) => {
+      b.disabled = isFull;
+    });
+  }
+
+  // 4. Update Floor Card Header Badges
+  const card = document.getElementById(`floor-card-${floorId}`);
+  if (card) {
+    const genCount = floor.generalPhotos.length;
+    const washCount = floor.washroomPhotos.length;
+    const total = genCount + washCount;
+    const badgesContainer = card.querySelector('.floor-header-badges');
+    if (badgesContainer) {
+      badgesContainer.innerHTML = `
+        <span class="badge-pill ${genCount > 0 ? 'badge-gen' : 'badge-empty'}">
+          General: ${genCount}/${MAX_PHOTOS_PER_SECTION}
+        </span>
+        <span class="badge-pill ${washCount > 0 ? 'badge-wash' : 'badge-empty'}">
+          Washroom: ${washCount}/${MAX_PHOTOS_PER_SECTION}
+        </span>
+        <span class="badge-pill ${total > 0 ? 'badge-gen' : 'badge-empty'}">
+          Total: ${total}/40
+        </span>
+      `;
+    }
+  }
+
+  // 5. Update Quick Nav Pill for this floor
+  const pill = document.querySelector(`[data-target-floor="${floorId}"]`);
+  if (pill) {
+    const total = floor.generalPhotos.length + floor.washroomPhotos.length;
+    pill.className = `floor-pill ${total > 0 ? 'has-photos' : ''}`;
+    const pillCount = pill.querySelector('.pill-count');
+    if (pillCount) pillCount.textContent = total;
+  }
+}
+
+/**
+ * Updates top KPIs, progress bar, and sticky bottom bar
+ */
+function updateGlobalStatsUI() {
+  const stats = getStats();
+
+  const kpiGen = document.getElementById('kpi-general-val');
+  if (kpiGen) kpiGen.textContent = stats.totalGeneral;
+
+  const kpiWash = document.getElementById('kpi-washroom-val');
+  if (kpiWash) kpiWash.textContent = stats.totalWashroom;
+
+  const kpiTot = document.getElementById('kpi-total-val');
+  if (kpiTot) kpiTot.textContent = stats.grandTotal;
+
+  const progressCount = document.getElementById('progress-floor-count');
+  if (progressCount) progressCount.textContent = `${stats.floorsWithPhotos} of 13 Floors Documented`;
+
+  const percent = Math.round((stats.floorsWithPhotos / 13) * 100);
+  const progressPercent = document.getElementById('progress-percent');
+  if (progressPercent) progressPercent.textContent = `${percent}%`;
+
+  const progressFill = document.getElementById('progress-fill-bar');
+  if (progressFill) progressFill.style.width = `${percent}%`;
+
+  const chipTot = document.getElementById('bar-total-chip');
+  if (chipTot) chipTot.textContent = `📸 ${stats.grandTotal} Photos`;
+
+  const chipFloors = document.getElementById('bar-floors-chip');
+  if (chipFloors) chipFloors.textContent = `🏢 ${stats.floorsWithPhotos}/13 Floors`;
+
+  const btnGen = document.getElementById('btn-generate-pdf');
+  if (btnGen) {
+    if (stats.grandTotal === 0) {
+      btnGen.title = 'Upload at least 1 photo to generate PDF';
+    } else {
+      btnGen.title = '';
+    }
+  }
+}
+
+/**
+ * Re-renders the entire UI
+ */
+function refreshEntireUI() {
+  renderApp();
+}
+
+/**
+ * Opens photo in Lightbox Modal
+ */
+function openLightbox(url, title) {
+  const modal = document.getElementById('modal-lightbox');
+  const img = document.getElementById('lightbox-img');
+  const titleEl = document.getElementById('lightbox-title');
+  if (modal && img && titleEl) {
+    img.src = url;
+    titleEl.textContent = title;
+    modal.classList.add('active');
+  }
+}
+
+/**
+ * PDF Generation Trigger
+ */
+async function handleGeneratePdfClick() {
+  if (!state.reportDate) {
+    showToast('Please select a Report Date before generating the PDF.', 'error');
+    return;
+  }
+
+  const stats = getStats();
+  if (stats.grandTotal === 0) {
+    showToast('Please upload at least one photo before generating the cleaning report PDF.', 'warning');
+    return;
+  }
+
+  state.isGenerating = true;
+  const modalGen = document.getElementById('modal-generation');
+  const statusEl = document.getElementById('gen-modal-status');
+  const subEl = document.getElementById('gen-modal-sub');
+
+  if (modalGen) modalGen.classList.add('active');
+
+  try {
+    const result = await generateDailyReportPDF({
+      reportDate: state.reportDate,
+      floors: state.floors,
+      onProgress: (p) => {
+        if (statusEl) statusEl.textContent = p.message || 'Generating PDF...';
+        if (subEl && p.step === 'floor') {
+          subEl.textContent = `Floor ${p.current} of ${p.total}`;
+        }
+      }
+    });
+
+    state.lastGeneratedPdf = result;
+
+    if (modalGen) modalGen.classList.remove('active');
+
+    // Show PDF Success Modal
+    const modalSuccess = document.getElementById('modal-pdf-success');
+    const filenameEl = document.getElementById('pdf-success-filename');
+    const detailsEl = document.getElementById('pdf-success-details');
+    const btnDownload = document.getElementById('btn-download-pdf');
+
+    if (filenameEl) filenameEl.textContent = result.fileName;
+    if (detailsEl) {
+      const sizeStr = formatBytes(result.blob.size);
+      detailsEl.textContent = `Total Pages: ${result.totalPages} | File Size: ${sizeStr} | Inspection Date: ${formatDisplayDate(state.reportDate)}`;
+    }
+
+    if (btnDownload) {
+      btnDownload.style.display = 'inline-flex';
+    }
+
+    if (modalSuccess) modalSuccess.classList.add('active');
+
+    showToast('Daily Cleaning Report PDF generated successfully!', 'success');
+  } catch (err) {
+    console.error('PDF Generation Error:', err);
+    if (modalGen) modalGen.classList.remove('active');
+    showToast(`Failed to generate PDF: ${err.message}`, 'error');
+  } finally {
+    state.isGenerating = false;
+  }
+}
+
+/**
+ * Handles PDF Download
+ */
+function handleDownloadPdfClick() {
+  if (!state.lastGeneratedPdf) {
+    showToast('Please generate the PDF report first.', 'warning');
+    return;
+  }
+
+  const { blob, fileName } = state.lastGeneratedPdf;
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast(`Downloading ${fileName}...`, 'success');
+}
+
+/**
+ * App Initialization: Loads IndexedDB draft, sets up UI, and registers Service Worker
+ */
+async function initApp() {
+  // Register Service Worker for offline PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch((err) => {
+        console.warn('Service Worker registration skipped:', err);
+      });
+    });
+  }
+
+  try {
+    const draft = await loadDraft();
+    if (draft) {
+      if (draft.reportDate) state.reportDate = draft.reportDate;
+      if (Array.isArray(draft.floors) && draft.floors.length === 13) {
+        state.floors = draft.floors;
+      }
+      renderApp();
+      const stats = getStats();
+      if (stats.grandTotal > 0) {
+        showToast(`Restored draft from phone storage: ${stats.grandTotal} photos across ${stats.floorsWithPhotos} floors.`, 'info');
+      }
+    } else {
+      renderApp();
+    }
+  } catch (err) {
+    console.warn('Draft initialization failed:', err);
+    renderApp();
+  }
+}
+
+// Start application
+initApp();

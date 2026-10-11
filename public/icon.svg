@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#091a2e"/>
+      <stop offset="50%" stop-color="#0f2b48"/>
+      <stop offset="100%" stop-color="#1b4573"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background with rounded corners for squircle/app icon -->
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
+  <rect x="8" y="8" width="496" height="496" rx="102" fill="none" stroke="#2563eb" stroke-width="4" stroke-opacity="0.4"/>
+
+  <!-- Building / Facilities Shield Emblem -->
+  <g filter="url(#shadow)">
+    <!-- Shield Outline -->
+    <path d="M 256,60 L 390,110 C 390,260 256,380 256,410 C 256,380 122,260 122,110 Z" 
+          fill="url(#accentGrad)" opacity="0.15" stroke="url(#accentGrad)" stroke-width="8"/>
+
+    <!-- Building Tower Icons -->
+    <!-- Center Tower -->
+    <rect x="216" y="140" width="80" height="200" rx="8" fill="#ffffff"/>
+    <!-- Left Wing -->
+    <rect x="156" y="200" width="50" height="140" rx="6" fill="#93c5fd"/>
+    <!-- Right Wing -->
+    <rect x="306" y="200" width="50" height="140" rx="6" fill="#93c5fd"/>
+
+    <!-- Windows (Center Tower) -->
+    <rect x="232" y="160" width="16" height="20" rx="2" fill="#0f2b48"/>
+    <rect x="264" y="160" width="16" height="20" rx="2" fill="#0f2b48"/>
+    <rect x="232" y="195" width="16" height="20" rx="2" fill="#0f2b48"/>
+    <rect x="264" y="195" width="16" height="20" rx="2" fill="#0f2b48"/>
+    <rect x="232" y="230" width="16" height="20" rx="2" fill="#0f2b48"/>
+    <rect x="264" y="230" width="16" height="20" rx="2" fill="#0f2b48"/>
+    <rect x="232" y="265" width="16" height="20" rx="2" fill="#0f2b48"/>
+    <rect x="264" y="265" width="16" height="20" rx="2" fill="#0f2b48"/>
+
+    <!-- Sparkle / Cleanliness Star -->
+    <path d="M 256,95 Q 256,120 275,120 Q 256,120 256,145 Q 256,120 237,120 Q 256,120 256,95 Z" fill="#38bdf8"/>
+    <path d="M 360,160 Q 360,175 372,175 Q 360,175 360,190 Q 360,175 348,175 Q 360,175 360,160 Z" fill="#67e8f9"/>
+  </g>
+
+  <!-- Typography: MAHAJAN -->
+  <text x="256" y="385" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle" letter-spacing="3">MAHAJAN</text>
+  <text x="256" y="420" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="20" fill="#38bdf8" text-anchor="middle" letter-spacing="4">FACILITIES</text>
+  <text x="256" y="448" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="14" fill="#94a3b8" text-anchor="middle" letter-spacing="2">DAILY REPORT APP</text>
+</svg>
