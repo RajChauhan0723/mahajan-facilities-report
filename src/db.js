@@ -1,7 +1,8 @@
 // IndexedDB persistence for Mahajan Facilities Daily Cleaning Report
 const DB_NAME = 'MahajanHousekeepingDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'report_draft';
+const DB_VERSION = 2; // Upgraded for Past Report History store
+const DRAFT_STORE = 'report_draft';
+const HISTORY_STORE = 'report_history';
 const DRAFT_KEY = 'current_report_draft';
 
 function openDatabase() {
@@ -14,8 +15,13 @@ function openDatabase() {
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
+      if (!db.objectStoreNames.contains(DRAFT_STORE)) {
+        db.createObjectStore(DRAFT_STORE);
+      }
+      if (!db.objectStoreNames.contains(HISTORY_STORE)) {
+        const historyStore = db.createObjectStore(HISTORY_STORE, { keyPath: 'id' });
+        historyStore.createIndex('reportDate', 'reportDate', { unique: false });
+        historyStore.createIndex('createdAt', 'createdAt', { unique: false });
       }
     };
 
@@ -29,12 +35,16 @@ function openDatabase() {
   });
 }
 
+// ==========================================
+// DRAFT PERSISTENCE (Current in-progress report)
+// ==========================================
+
 export async function saveDraft(data) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(DRAFT_STORE, 'readwrite');
+      const store = tx.objectStore(DRAFT_STORE);
       const req = store.put(data, DRAFT_KEY);
 
       req.onsuccess = () => resolve(true);
@@ -50,8 +60,8 @@ export async function loadDraft() {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(DRAFT_STORE, 'readonly');
+      const store = tx.objectStore(DRAFT_STORE);
       const req = store.get(DRAFT_KEY);
 
       req.onsuccess = () => resolve(req.result || null);
@@ -67,8 +77,8 @@ export async function clearDraft() {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(DRAFT_STORE, 'readwrite');
+      const store = tx.objectStore(DRAFT_STORE);
       const req = store.delete(DRAFT_KEY);
 
       req.onsuccess = () => resolve(true);
@@ -76,6 +86,83 @@ export async function clearDraft() {
     });
   } catch (err) {
     console.warn('Could not clear draft from IndexedDB:', err);
+    return false;
+  }
+}
+
+// ==========================================
+// REPORT HISTORY PERSISTENCE (Past days' generated reports)
+// ==========================================
+
+export async function saveReportToHistory(report) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HISTORY_STORE, 'readwrite');
+      const store = tx.objectStore(HISTORY_STORE);
+      const req = store.put(report);
+
+      req.onsuccess = () => resolve(true);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch (err) {
+    console.warn('Could not save report to history:', err);
+    return false;
+  }
+}
+
+export async function getReportHistory() {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HISTORY_STORE, 'readonly');
+      const store = tx.objectStore(HISTORY_STORE);
+      const req = store.getAll();
+
+      req.onsuccess = () => {
+        const list = req.result || [];
+        // Sort descending by creation date (newest first)
+        list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        resolve(list);
+      };
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch (err) {
+    console.warn('Could not get report history:', err);
+    return [];
+  }
+}
+
+export async function deleteReportFromHistory(id) {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HISTORY_STORE, 'readwrite');
+      const store = tx.objectStore(HISTORY_STORE);
+      const req = store.delete(id);
+
+      req.onsuccess = () => resolve(true);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch (err) {
+    console.warn('Could not delete report from history:', err);
+    return false;
+  }
+}
+
+export async function clearAllReportHistory() {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HISTORY_STORE, 'readwrite');
+      const store = tx.objectStore(HISTORY_STORE);
+      const req = store.clear();
+
+      req.onsuccess = () => resolve(true);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch (err) {
+    console.warn('Could not clear report history:', err);
     return false;
   }
 }

@@ -1,9 +1,10 @@
 {
   "name": "Mahajan Facilities — Daily Cleaning Report",
   "short_name": "Mahajan Report",
+  "id": "/",
   "description": "Daily Housekeeping Cleaning Inspection Report Generator for Mahajan Facilities",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f2b48",
   "theme_color": "#0f2b48",

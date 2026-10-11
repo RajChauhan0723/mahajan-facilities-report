@@ -1,12 +1,14 @@
 // Service Worker for Mahajan Facilities Daily Cleaning Report PWA
-const CACHE_NAME = 'mahajan-report-v1';
+const CACHE_NAME = 'mahajan-report-v2';
 const PRECACHE_ASSETS = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './icon.svg',
-  './icon-192.png',
-  './icon-512.png'
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/logo.png',
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/favicon.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,26 +34,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached response and update cache in background
+        // Return cached and refresh in background
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, networkResponse.clone());
             });
           }
-        }).catch(() => {
-          // Network failure is fine, cache was served
-        });
+        }).catch(() => {});
         return cachedResponse;
       }
 
-      // If not in cache, fetch from network and cache it
       return fetch(event.request).then((networkResponse) => {
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
@@ -64,9 +62,8 @@ self.addEventListener('fetch', (event) => {
 
         return networkResponse;
       }).catch(() => {
-        // Fallback for navigation requests
         if (event.request.mode === 'navigate') {
-          return caches.match('./index.html') || caches.match('/');
+          return caches.match('/index.html') || caches.match('/');
         }
       });
     })

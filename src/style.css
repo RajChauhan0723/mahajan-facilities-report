@@ -1209,3 +1209,122 @@ body {
   display: block;
   margin-bottom: 2px;
 }
+
+/* Past Reports History Drawer / Modal */
+.history-modal-dialog {
+  max-width: 680px;
+  width: 95vw;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.history-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.history-card:hover {
+  border-color: var(--navy-500);
+  box-shadow: var(--shadow-md);
+}
+
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-date-badge {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--navy-800);
+}
+
+.history-time-tag {
+  font-size: 11px;
+  color: var(--slate-400);
+}
+
+.history-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--slate-600);
+  flex-wrap: wrap;
+}
+
+.history-stat-tag {
+  background: var(--slate-100);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-history-dl {
+  background: #10b981;
+  color: var(--white);
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-history-dl:hover {
+  background: #059669;
+}
+
+.btn-history-del {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #fecaca;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-history-del:hover {
+  background: #fee2e2;
+}
+
+.empty-history-box {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--slate-500);
+}

@@ -1,5 +1,13 @@
 import './style.css';
-import { saveDraft, loadDraft, clearDraft } from './db.js';
+import { 
+  saveDraft, 
+  loadDraft, 
+  clearDraft, 
+  saveReportToHistory, 
+  getReportHistory, 
+  deleteReportFromHistory, 
+  clearAllReportHistory 
+} from './db.js';
 import { processImageFile, formatBytes } from './imageProcessor.js';
 import { generateDailyReportPDF, formatDisplayDate } from './pdfGenerator.js';
 
@@ -34,7 +42,8 @@ const state = {
   expandedFloors: new Set([FLOORS_CONFIG[0].id]), // Ground floor open by default
   lastGeneratedPdf: null,
   isGenerating: false,
-  activeLightboxImg: null
+  activeLightboxImg: null,
+  reportHistory: [] // Stored past days' reports
 };
 
 // PWA Install State
@@ -144,6 +153,13 @@ function updateAutosaveIndicator() {
   }
 }
 
+function updateHistoryBadge() {
+  const badge = document.getElementById('history-badge-count');
+  if (badge) {
+    badge.textContent = state.reportHistory.length;
+  }
+}
+
 /**
  * Main Render Application Shell
  */
@@ -166,6 +182,11 @@ function renderApp() {
           </div>
           
           <div class="header-actions">
+            <!-- Past Reports History Button -->
+            <button id="btn-open-history" class="btn-ghost-sm" style="color: #ffffff; background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); padding: 7px 14px; font-weight: 700;">
+              <span>📜</span> Past Reports (<span id="history-badge-count">${state.reportHistory.length}</span>)
+            </button>
+
             <!-- PWA Mobile App Install Controls -->
             ${
               isStandaloneApp
@@ -292,8 +313,8 @@ function renderApp() {
             Photos are saved offline in your phone storage. Leaving or refreshing the tab will not lose photos.
           </div>
           <div class="guide-step-item">
-            <strong>4. Generate & Share PDF</strong>
-            Tap "Generate PDF" below to create a client-ready A4 PDF document ready for WhatsApp or email.
+            <strong>4. Past Reports History</strong>
+            All generated reports are automatically saved in the "Past Reports" drawer for future retrieval anytime.
           </div>
         </div>
       </section>
@@ -317,6 +338,25 @@ function renderApp() {
       </div>
     </div>
 
+    <!-- Past Reports History Modal -->
+    <div id="modal-history" class="modal-overlay">
+      <div class="modal-dialog history-modal-dialog">
+        <div class="modal-header">
+          <h3 class="modal-title">📜 Past Cleaning Reports History</h3>
+          <button class="modal-close-btn" id="btn-close-history-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="history-list-container" class="history-list">
+            ${renderHistoryList()}
+          </div>
+        </div>
+        <div class="modal-footer" style="justify-content: space-between;">
+          <span style="font-size: 11px; color: var(--slate-500);">Reports stored permanently in local browser storage</span>
+          <button id="btn-close-history" class="btn-ghost-sm" style="padding: 8px 16px;">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Generation Progress Modal -->
     <div id="modal-generation" class="modal-overlay">
       <div class="modal-dialog">
@@ -336,7 +376,7 @@ function renderApp() {
           <button class="modal-close-btn" id="btn-close-clear-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p>This will permanently remove all photos across all 13 floors and reset your report draft.</p>
+          <p>This will permanently remove all photos across all 13 floors and reset your current draft.</p>
           <p style="margin-top: 10px; font-weight: 700; color: #b91c1c;">Are you sure you want to proceed?</p>
         </div>
         <div class="modal-footer">
@@ -354,27 +394,19 @@ function renderApp() {
           <button class="modal-close-btn" id="btn-close-install-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p style="margin-bottom: 12px; font-weight: 600; color: var(--navy-800);">Install Mahajan Facilities as a standalone mobile app on your phone:</p>
+          <p style="margin-bottom: 12px; font-weight: 600; color: var(--navy-800);">Phone par bina store ke App icon lagane ka tarika:</p>
           
-          <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;">
-            <h4 style="font-size: 13px; color: var(--navy-800); margin-bottom: 6px;">🤖 Android (Chrome / Samsung Internet):</h4>
-            <ol style="margin-left: 18px; font-size: 12px; color: var(--slate-700); line-height: 1.6;">
-              <li>Tap the <strong>3 dots menu (⋮)</strong> at top right of Chrome.</li>
-              <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
-              <li>Confirm "Install". The <strong>Mahajan Facilities</strong> app icon will appear right on your phone's home screen!</li>
-            </ol>
-          </div>
-
-          <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;">
-            <h4 style="font-size: 13px; color: var(--navy-800); margin-bottom: 6px;">🍏 iPhone / iPad (Safari):</h4>
-            <ol style="margin-left: 18px; font-size: 12px; color: var(--slate-700); line-height: 1.6;">
-              <li>Tap the <strong>Share button (Square with up arrow)</strong> at bottom.</li>
-              <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+          <div style="background: #f8fafc; border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px;">
+            <h4 style="font-size: 14px; color: var(--navy-800); margin-bottom: 8px; font-weight: 800;">🤖 Android (Chrome):</h4>
+            <ol style="margin-left: 18px; font-size: 13px; color: var(--slate-700); line-height: 1.7;">
+              <li>Chrome me upar right corner me <strong>3 dots (⋮)</strong> par tap karein.</li>
+              <li>Menu me <strong>"Install app"</strong> ya <strong>"Add to Home screen"</strong> par tap karein.</li>
+              <li>Confirm karein! <strong>Mahajan Facilities</strong> ka app icon seedha aapke phone ki home screen par aa jayega.</li>
             </ol>
           </div>
 
           <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-sm); padding: 10px; font-size: 12px; color: #1e40af;">
-            ✨ <strong>Benefits:</strong> Opens in full screen without browser bars, launches in 1 tap, and works completely offline even in basements!
+            💡 <strong>Note:</strong> Agar aap abhi Wi-Fi IP (http://...) se test kar rahe hain, to Chrome automatic popup block karta hai. Par jab aap <strong>Vercel (https://...)</strong> par live karenge to automatic popup bhi aa jayega!
           </div>
         </div>
         <div class="modal-footer">
@@ -395,27 +427,16 @@ function renderApp() {
         </div>
         <div class="modal-body" style="font-size: 13px; line-height: 1.6;">
           <p style="margin-bottom: 12px; font-weight: 600; color: var(--navy-800);">
-            To open this app from <strong>any phone or location 24/7 without needing your laptop</strong>, you can deploy it to free cloud hosting in 1 minute:
+            Aapka code aapke GitHub repository (<strong>RajChauhan0723/mahajan-facilities-report</strong>) par live hai!
           </p>
 
           <div style="background: #f8fafc; border: 1px solid var(--slate-200); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-            <strong style="color: var(--navy-800); display: block; margin-bottom: 4px;">🚀 Free Option 1: Vercel (Recommended - 30 seconds)</strong>
-            <p style="font-size: 12px; color: var(--slate-600); margin-bottom: 6px;">Deploy directly with one command in your terminal:</p>
-            <code style="display: block; background: #0f172a; color: #38bdf8; padding: 6px 10px; border-radius: 4px; font-size: 12px;">npx vercel</code>
-            <p style="font-size: 11px; color: var(--slate-500); margin-top: 4px;">You get a permanent free link like <code>https://mahajan-report.vercel.app</code> that works everywhere!</p>
-          </div>
-
-          <div style="background: #f8fafc; border: 1px solid var(--slate-200); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-            <strong style="color: var(--navy-800); display: block; margin-bottom: 4px;">⚡ Free Option 2: Netlify Drop (Zero code)</strong>
+            <strong style="color: var(--navy-800); display: block; margin-bottom: 4px;">🚀 1 Click Me Vercel Par Deploy Karein:</strong>
             <p style="font-size: 12px; color: var(--slate-600);">
-              1. Run <code>npm run build</code> (already created in <code>dist</code> folder).<br>
-              2. Go to <strong>app.netlify.com/drop</strong> on any browser.<br>
-              3. Drag and drop the <code>dist</code> folder. Done!
+              1. <strong>vercel.com</strong> par RajChauhan0723 GitHub se login karein.<br>
+              2. <strong>mahajan-facilities-report</strong> ko Import karke Deploy dabayein.<br>
+              3. Permanent free link mil jayega jo phone par 24/7 chalega!
             </p>
-          </div>
-
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; font-size: 12px; color: #166534;">
-            🔒 <strong>100% Secure & Private:</strong> The app processes all photos right inside the phone's browser and generates PDFs locally. No photos are ever uploaded to any third-party servers.
           </div>
         </div>
         <div class="modal-footer">
@@ -463,6 +484,57 @@ function renderApp() {
   `;
 
   attachEventListeners();
+}
+
+/**
+ * Renders Past Reports History Cards
+ */
+function renderHistoryList() {
+  if (!state.reportHistory || state.reportHistory.length === 0) {
+    return `
+      <div class="empty-history-box">
+        <div style="font-size: 40px; margin-bottom: 10px;">📋</div>
+        <p style="font-weight: 700; color: var(--navy-800); margin-bottom: 4px;">No past reports saved yet</p>
+        <p style="font-size: 12px; color: var(--slate-500);">Whenever you generate a Daily PDF Report, it will automatically be stored here with its date and full download file!</p>
+      </div>
+    `;
+  }
+
+  return state.reportHistory
+    .map((item) => {
+      const timeStr = new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateDisplay = item.formattedDate || item.reportDate;
+      const sizeStr = item.pdfBlob ? formatBytes(item.pdfBlob.size) : '';
+
+      return `
+        <div class="history-card" data-history-id="${item.id}">
+          <div class="history-info">
+            <div class="history-date-row">
+              <span class="history-date-badge">📅 ${dateDisplay}</span>
+              <span class="history-time-tag">${timeStr}</span>
+            </div>
+            <div class="history-stats-row">
+              <span class="history-stat-tag">📸 ${item.totalPhotos} Photos</span>
+              <span class="history-stat-tag">🏢 ${item.floorsDocumented} Floors</span>
+              <span class="history-stat-tag">📄 ${item.totalPages} Pages</span>
+              ${sizeStr ? `<span class="history-stat-tag">${sizeStr}</span>` : ''}
+            </div>
+          </div>
+          <div class="history-actions">
+            <button class="btn-history-dl" data-action="history-download" data-history-id="${item.id}" title="Download Saved PDF">
+              <span>📥</span> Download
+            </button>
+            <button class="btn-ghost-sm" data-action="history-view" data-history-id="${item.id}" title="View in New Tab" style="padding: 6px 10px;">
+              <span>👁️</span>
+            </button>
+            <button class="btn-history-del" data-action="history-delete" data-history-id="${item.id}" title="Delete this saved report">
+              &times;
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
 }
 
 /**
@@ -641,6 +713,72 @@ function attachEventListeners() {
       autoSaveState();
     });
   }
+
+  // History Modal Toggle
+  const btnOpenHistory = document.getElementById('btn-open-history');
+  const modalHistory = document.getElementById('modal-history');
+  const btnCloseHistoryModal = document.getElementById('btn-close-history-modal');
+  const btnCloseHistory = document.getElementById('btn-close-history');
+
+  if (btnOpenHistory && modalHistory) {
+    btnOpenHistory.addEventListener('click', async () => {
+      state.reportHistory = await getReportHistory();
+      const listContainer = document.getElementById('history-list-container');
+      if (listContainer) listContainer.innerHTML = renderHistoryList();
+      updateHistoryBadge();
+      modalHistory.classList.add('active');
+    });
+
+    [btnCloseHistoryModal, btnCloseHistory].forEach((btn) => {
+      if (btn) btn.addEventListener('click', () => modalHistory.classList.remove('active'));
+    });
+
+    modalHistory.addEventListener('click', (e) => {
+      if (e.target === modalHistory) modalHistory.classList.remove('active');
+    });
+  }
+
+  // History List Actions (Download, View, Delete)
+  document.addEventListener('click', async (e) => {
+    const dlBtn = e.target.closest('[data-action="history-download"]');
+    if (dlBtn) {
+      const id = dlBtn.dataset.historyId;
+      const item = state.reportHistory.find((r) => r.id === id);
+      if (item && item.pdfBlob) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(item.pdfBlob);
+        link.download = item.fileName || `Mahajan_Cleaning_Report_${item.formattedDate}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast(`Downloading saved report for ${item.formattedDate}...`, 'success');
+      }
+      return;
+    }
+
+    const viewBtn = e.target.closest('[data-action="history-view"]');
+    if (viewBtn) {
+      const id = viewBtn.dataset.historyId;
+      const item = state.reportHistory.find((r) => r.id === id);
+      if (item && item.pdfBlob) {
+        const url = URL.createObjectURL(item.pdfBlob);
+        window.open(url, '_blank');
+      }
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-action="history-delete"]');
+    if (delBtn) {
+      const id = delBtn.dataset.historyId;
+      await deleteReportFromHistory(id);
+      state.reportHistory = await getReportHistory();
+      const listContainer = document.getElementById('history-list-container');
+      if (listContainer) listContainer.innerHTML = renderHistoryList();
+      updateHistoryBadge();
+      showToast('Report removed from history.', 'info');
+      return;
+    }
+  });
 
   // PWA Install Button Click
   const btnInstallApp = document.getElementById('btn-install-app');
@@ -936,7 +1074,6 @@ async function handleFilesUpload(floorId, sectionKey, files) {
     return;
   }
 
-  // Separate valid files from invalid formats
   const validFiles = [];
   const invalidFiles = [];
 
@@ -955,7 +1092,6 @@ async function handleFilesUpload(floorId, sectionKey, files) {
 
   if (validFiles.length === 0) return;
 
-  // Check 20 photo limit
   const filesToProcess = validFiles.slice(0, remainingSlots);
   const skippedCount = validFiles.length - filesToProcess.length;
 
@@ -965,7 +1101,6 @@ async function handleFilesUpload(floorId, sectionKey, files) {
     showToast(`Processing ${filesToProcess.length} image(s)...`, 'info');
   }
 
-  // Process and downscale images concurrently
   let addedCount = 0;
   for (const file of filesToProcess) {
     try {
@@ -1135,7 +1270,7 @@ function openLightbox(url, title) {
 }
 
 /**
- * PDF Generation Trigger
+ * PDF Generation Trigger with Auto-Save to History
  */
 async function handleGeneratePdfClick() {
   if (!state.reportDate) {
@@ -1170,6 +1305,28 @@ async function handleGeneratePdfClick() {
 
     state.lastGeneratedPdf = result;
 
+    // Automatically Save to Past Reports History in IndexedDB
+    try {
+      const historyRecord = {
+        id: 'rep_' + Date.now(),
+        reportDate: state.reportDate,
+        formattedDate: formatDisplayDate(state.reportDate),
+        createdAt: Date.now(),
+        totalPhotos: stats.grandTotal,
+        generalPhotos: stats.totalGeneral,
+        washroomPhotos: stats.totalWashroom,
+        floorsDocumented: stats.floorsWithPhotos,
+        totalPages: result.totalPages,
+        fileName: result.fileName,
+        pdfBlob: result.blob
+      };
+      await saveReportToHistory(historyRecord);
+      state.reportHistory = await getReportHistory();
+      updateHistoryBadge();
+    } catch (saveErr) {
+      console.warn('Could not auto-archive report to history:', saveErr);
+    }
+
     if (modalGen) modalGen.classList.remove('active');
 
     // Show PDF Success Modal
@@ -1190,7 +1347,7 @@ async function handleGeneratePdfClick() {
 
     if (modalSuccess) modalSuccess.classList.add('active');
 
-    showToast('Daily Cleaning Report PDF generated successfully!', 'success');
+    showToast('Daily Cleaning Report PDF generated & saved to History!', 'success');
   } catch (err) {
     console.error('PDF Generation Error:', err);
     if (modalGen) modalGen.classList.remove('active');
@@ -1221,19 +1378,23 @@ function handleDownloadPdfClick() {
 }
 
 /**
- * App Initialization: Loads IndexedDB draft, sets up UI, and registers Service Worker
+ * App Initialization: Loads IndexedDB draft & past reports history
  */
 async function initApp() {
   // Register Service Worker for offline PWA
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
         console.warn('Service Worker registration skipped:', err);
       });
     });
   }
 
   try {
+    // Load Past Reports History
+    state.reportHistory = await getReportHistory();
+
+    // Load in-progress draft
     const draft = await loadDraft();
     if (draft) {
       if (draft.reportDate) state.reportDate = draft.reportDate;
