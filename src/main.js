@@ -44,7 +44,8 @@ const state = {
   lastGeneratedPdf: null,
   isGenerating: false,
   activeLightboxImg: null,
-  reportHistory: [] // Stored past days' reports
+  reportHistory: [], // Stored past days' reports
+  historyFilterDate: '' // Filter for past reports modal
 };
 
 // PWA Install State
@@ -312,7 +313,7 @@ function renderApp() {
           </div>
           <div class="guide-step-item">
             <strong>4. Past Reports History</strong>
-            Generate hote hi report "Past Reports" drawer me hamesha ke liye save ho jati hai.
+            Generate hote hi report "Past Reports" drawer me save ho jati hai, jaha se kabhi bhi purani date ka data khol sakte hain.
           </div>
         </div>
       </section>
@@ -336,20 +337,29 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- Past Reports History Modal -->
+    <!-- Past Reports History Modal with Date Filter & Loader -->
     <div id="modal-history" class="modal-overlay">
       <div class="modal-dialog history-modal-dialog">
         <div class="modal-header">
-          <h3 class="modal-title">📜 Past Cleaning Reports History</h3>
+          <h3 class="modal-title">📜 Past Cleaning Reports & Date History</h3>
           <button class="modal-close-btn" id="btn-close-history-modal">&times;</button>
         </div>
         <div class="modal-body">
+          <!-- Date Filter / Quick Selection Bar -->
+          <div class="history-filter-bar" style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label for="history-filter-date" style="font-size: 13px; font-weight: 700; color: var(--navy-800);">📅 Select Date to View:</label>
+              <input type="date" id="history-filter-date" class="date-input" value="${state.historyFilterDate || ''}" style="padding: 5px 10px; font-size: 13px;" />
+            </div>
+            <button id="btn-history-show-all" class="btn-ghost-sm" style="font-size: 12px; padding: 5px 12px;">Show All Dates</button>
+          </div>
+
           <div id="history-list-container" class="history-list">
-            ${renderHistoryList()}
+            ${renderHistoryList(state.historyFilterDate)}
           </div>
         </div>
         <div class="modal-footer" style="justify-content: space-between;">
-          <span style="font-size: 11px; color: var(--slate-500);">Reports stored permanently in local browser storage</span>
+          <span style="font-size: 11px; color: var(--slate-500);">Tap "Open Date Data" to view uploaded photos or "Download" for PDF</span>
           <button id="btn-close-history" class="btn-ghost-sm" style="padding: 8px 16px;">Close</button>
         </div>
       </div>
@@ -488,10 +498,25 @@ function renderApp() {
 }
 
 /**
- * Renders Past Reports History Cards
+ * Renders Past Reports History Cards (with optional date filtering)
  */
-function renderHistoryList() {
-  if (!state.reportHistory || state.reportHistory.length === 0) {
+function renderHistoryList(filterDate = '') {
+  let list = state.reportHistory || [];
+
+  if (filterDate) {
+    list = list.filter((item) => item.reportDate === filterDate);
+  }
+
+  if (list.length === 0) {
+    if (filterDate) {
+      return `
+        <div class="empty-history-box">
+          <div style="font-size: 36px; margin-bottom: 8px;">🔍</div>
+          <p style="font-weight: 700; color: var(--navy-800); margin-bottom: 4px;">No report found for ${formatDisplayDate(filterDate)}</p>
+          <p style="font-size: 12px; color: var(--slate-500);">Try selecting another date or click "Show All Dates".</p>
+        </div>
+      `;
+    }
     return `
       <div class="empty-history-box">
         <div style="font-size: 40px; margin-bottom: 10px;">📋</div>
@@ -501,7 +526,7 @@ function renderHistoryList() {
     `;
   }
 
-  return state.reportHistory
+  return list
     .map((item) => {
       const timeStr = new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const dateDisplay = item.formattedDate || item.reportDate;
@@ -511,7 +536,7 @@ function renderHistoryList() {
         <div class="history-card" data-history-id="${item.id}">
           <div class="history-info">
             <div class="history-date-row">
-              <span class="history-date-badge">📅 ${dateDisplay}</span>
+              <span class="history-date-badge" style="font-size: 15px; color: var(--navy-800);">📅 Date: ${dateDisplay}</span>
               <span class="history-time-tag">${timeStr}</span>
             </div>
             <div class="history-stats-row">
@@ -522,8 +547,11 @@ function renderHistoryList() {
             </div>
           </div>
           <div class="history-actions">
+            <button class="btn-history-load" data-action="history-load" data-history-id="${item.id}" title="Open this date's data & photos in the dashboard">
+              <span>📂</span> Open Date Data
+            </button>
             <button class="btn-history-dl" data-action="history-download" data-history-id="${item.id}" title="Download Saved PDF">
-              <span>📥</span> Download
+              <span>📥</span> Download PDF
             </button>
             <button class="btn-ghost-sm" data-action="history-view" data-history-id="${item.id}" title="View in New Tab" style="padding: 6px 10px;">
               <span>👁️</span>
@@ -765,8 +793,11 @@ function attachEventListeners() {
   if (btnOpenHistory && modalHistory) {
     btnOpenHistory.addEventListener('click', async () => {
       state.reportHistory = await getReportHistory();
+      state.historyFilterDate = '';
       const listContainer = document.getElementById('history-list-container');
-      if (listContainer) listContainer.innerHTML = renderHistoryList();
+      if (listContainer) listContainer.innerHTML = renderHistoryList('');
+      const filterInput = document.getElementById('history-filter-date');
+      if (filterInput) filterInput.value = '';
       updateHistoryBadge();
       modalHistory.classList.add('active');
     });
@@ -780,8 +811,63 @@ function attachEventListeners() {
     });
   }
 
-  // History List Actions (Download, View, Delete)
+  // History Date Filter Handler
+  const filterDateInput = document.getElementById('history-filter-date');
+  if (filterDateInput) {
+    filterDateInput.addEventListener('change', (e) => {
+      const selected = e.target.value;
+      state.historyFilterDate = selected;
+      const listContainer = document.getElementById('history-list-container');
+      if (listContainer) listContainer.innerHTML = renderHistoryList(selected);
+    });
+  }
+
+  const btnShowAllDates = document.getElementById('btn-history-show-all');
+  if (btnShowAllDates) {
+    btnShowAllDates.addEventListener('click', () => {
+      state.historyFilterDate = '';
+      const filterInput = document.getElementById('history-filter-date');
+      if (filterInput) filterInput.value = '';
+      const listContainer = document.getElementById('history-list-container');
+      if (listContainer) listContainer.innerHTML = renderHistoryList('');
+    });
+  }
+
+  // History List Actions (Load Data, Download, View, Delete)
   document.addEventListener('click', async (e) => {
+    // 1. Load Data into App
+    const loadBtn = e.target.closest('[data-action="history-load"]');
+    if (loadBtn) {
+      const id = loadBtn.dataset.historyId;
+      const item = state.reportHistory.find((r) => r.id === id);
+      if (item) {
+        // Save current sheet first
+        await saveDraft(state.reportDate, state.floors);
+
+        state.reportDate = item.reportDate;
+        if (item.floors && Array.isArray(item.floors) && item.floors.length === 13) {
+          state.floors = JSON.parse(JSON.stringify(item.floors));
+        } else {
+          const draft = await loadDraft(item.reportDate);
+          if (draft && Array.isArray(draft.floors)) {
+            state.floors = draft.floors;
+          }
+        }
+
+        state.lastGeneratedPdf = {
+          blob: item.pdfBlob,
+          fileName: item.fileName,
+          totalPages: item.totalPages
+        };
+
+        if (modalHistory) modalHistory.classList.remove('active');
+        refreshEntireUI();
+        showToast(`Loaded full inspection data for ${item.formattedDate}! You can now inspect photos & edit.`, 'success');
+      }
+      return;
+    }
+
+    // 2. Download Saved PDF
     const dlBtn = e.target.closest('[data-action="history-download"]');
     if (dlBtn) {
       const id = dlBtn.dataset.historyId;
@@ -798,6 +884,7 @@ function attachEventListeners() {
       return;
     }
 
+    // 3. View PDF in Tab
     const viewBtn = e.target.closest('[data-action="history-view"]');
     if (viewBtn) {
       const id = viewBtn.dataset.historyId;
@@ -809,13 +896,14 @@ function attachEventListeners() {
       return;
     }
 
+    // 4. Delete Record
     const delBtn = e.target.closest('[data-action="history-delete"]');
     if (delBtn) {
       const id = delBtn.dataset.historyId;
       await deleteReportFromHistory(id);
       state.reportHistory = await getReportHistory();
       const listContainer = document.getElementById('history-list-container');
-      if (listContainer) listContainer.innerHTML = renderHistoryList();
+      if (listContainer) listContainer.innerHTML = renderHistoryList(state.historyFilterDate);
       updateHistoryBadge();
       showToast('Report removed from history.', 'info');
       return;
@@ -1094,7 +1182,6 @@ function attachEventListeners() {
   if (btnModalNewDay) {
     btnModalNewDay.addEventListener('click', async () => {
       modalSuccess.classList.remove('active');
-      // Set to today's date or advance by 1 day
       const d = new Date(state.reportDate);
       d.setDate(d.getDate() + 1);
       const nextYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1371,10 +1458,10 @@ async function handleGeneratePdfClick() {
 
     state.lastGeneratedPdf = result;
 
-    // Automatically Save to Past Reports History in IndexedDB
+    // Automatically Save to Past Reports History with full photos snapshot!
     try {
       const historyRecord = {
-        id: 'rep_' + Date.now(),
+        id: 'rep_' + state.reportDate + '_' + Date.now(),
         reportDate: state.reportDate,
         formattedDate: formatDisplayDate(state.reportDate),
         createdAt: Date.now(),
@@ -1384,7 +1471,8 @@ async function handleGeneratePdfClick() {
         floorsDocumented: stats.floorsWithPhotos,
         totalPages: result.totalPages,
         fileName: result.fileName,
-        pdfBlob: result.blob
+        pdfBlob: result.blob,
+        floors: JSON.parse(JSON.stringify(state.floors)) // Complete snapshot of photos!
       };
       await saveReportToHistory(historyRecord);
       state.reportHistory = await getReportHistory();

@@ -1290,6 +1290,25 @@ body {
   flex-shrink: 0;
 }
 
+.btn-history-load {
+  background: var(--navy-800);
+  color: var(--white);
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.btn-history-load:hover {
+  background: var(--navy-700);
+}
+
 .btn-history-dl {
   background: #10b981;
   color: var(--white);
