@@ -1,6 +1,6 @@
 {
-  "name": "Mahajan Facilities — Daily Cleaning Report",
-  "short_name": "Mahajan Report",
+  "name": "Mahajan Facilities",
+  "short_name": "Mahajan Facilities",
   "id": "/",
   "description": "Daily Housekeeping Cleaning Inspection Report Generator for Mahajan Facilities",
   "start_url": "/",
