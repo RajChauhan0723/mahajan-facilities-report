@@ -30,9 +30,9 @@ async function buildIcons() {
   console.log('Generated public/icon-192.png');
 
   // 4. Android Maskable Icons (With 15% Safe-Zone Padding so Android doesn't crop or stretch)
-  // Outer canvas 512x512 with clean white background, inner logo scaled to 410x410 centered
+  // Outer canvas 512x512 with exact logo background color #f6f3ee (246, 243, 238), inner logo scaled to 410x410 centered
   const inner512 = await sharp(srcBuffer)
-    .resize(410, 410, { kernel: sharp.kernel.lanczos3, fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+    .resize(410, 410, { kernel: sharp.kernel.lanczos3, fit: 'contain', background: { r: 246, g: 243, b: 238, alpha: 1 } })
     .toBuffer();
 
   await sharp({
@@ -40,7 +40,7 @@ async function buildIcons() {
       width: 512,
       height: 512,
       channels: 4,
-      background: { r: 255, g: 255, b: 255, alpha: 1 }
+      background: { r: 246, g: 243, b: 238, alpha: 1 }
     }
   })
     .composite([{ input: inner512, gravity: 'center' }])
@@ -50,7 +50,7 @@ async function buildIcons() {
 
   // 192x192 Maskable
   const inner192 = await sharp(srcBuffer)
-    .resize(154, 154, { kernel: sharp.kernel.lanczos3, fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+    .resize(154, 154, { kernel: sharp.kernel.lanczos3, fit: 'contain', background: { r: 246, g: 243, b: 238, alpha: 1 } })
     .toBuffer();
 
   await sharp({
@@ -58,7 +58,7 @@ async function buildIcons() {
       width: 192,
       height: 192,
       channels: 4,
-      background: { r: 255, g: 255, b: 255, alpha: 1 }
+      background: { r: 246, g: 243, b: 238, alpha: 1 }
     }
   })
     .composite([{ input: inner192, gravity: 'center' }])

@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#07172b" />
     
-    <!-- Preload Brand Logo to eliminate layout shift / drift -->
-    <link rel="preload" as="image" href="/logo.png" />
+    <!-- Preload Master Brand Logo with version query -->
+    <link rel="preload" as="image" href="/logo.png?v=6" />
 
-    <!-- PWA Web App Capabilities -->
+    <!-- PWA Web App Capabilities & Manifest -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=6" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png?v=6" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=6" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -20,15 +20,101 @@
     <meta name="application-name" content="Mahajan Facilities" />
 
     <title>Mahajan Facilities</title>
+
+    <!-- Critical CSS for Instant 0ms Static Header Rendering (Eliminates all layout shifts & drift) -->
+    <style>
+      :root {
+        --navy-950: #050e1a;
+        --navy-900: #07172b;
+        --navy-850: #0a1f38;
+        --navy-800: #0c2340;
+        --gold-500: #c59b27;
+        --gold-400: #d4af37;
+        --gold-300: #e5c158;
+        --body-bg: #eaeff5;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--body-bg);
+      }
+      .app-header {
+        background: linear-gradient(135deg, var(--navy-950) 0%, var(--navy-900) 40%, var(--navy-850) 80%, var(--navy-800) 100%);
+        color: #ffffff;
+        padding: 22px 0 20px;
+        box-shadow: 0 4px 20px rgba(7, 23, 43, 0.45);
+        border-bottom: 3px solid var(--gold-500);
+      }
+      .container {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+      .header-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      @media (min-width: 768px) {
+        .header-inner {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+      }
+      .brand-section {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .brand-logo-img {
+        width: 54px;
+        height: 54px;
+        aspect-ratio: 1 / 1;
+        object-fit: contain;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 2px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        border: 2px solid var(--gold-400);
+        flex-shrink: 0;
+        image-rendering: -webkit-optimize-contrast;
+      }
+      .brand-titles h1 {
+        font-size: 21px;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: #ffffff;
+        line-height: 1.2;
+        margin: 0;
+      }
+      .brand-titles p {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--gold-300);
+        margin: 3px 0 0 0;
+      }
+    </style>
   </head>
   <body>
     <div id="app">
-      <!-- High-res Instant Brand Loader (Eliminates layout shift & drift while app initializes) -->
-      <div id="initial-app-loader" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; padding: 20px; text-align: center;">
-        <img src="/logo.png" alt="Mahajan Facilities" width="140" height="140" style="width: 140px; height: 140px; object-fit: contain; margin-bottom: 16px; filter: drop-shadow(0 4px 12px rgba(12, 35, 64, 0.1));" />
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 19px; font-weight: 800; color: #07172b; letter-spacing: 0.8px; text-transform: uppercase;">MAHAJAN FACILITIES</div>
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; font-weight: 700; color: #c59b27; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px;">Smart Solutions</div>
-      </div>
+      <!-- In-place Header Skeleton — Logo is fixed at top-left from the very first frame -->
+      <header class="app-header">
+        <div class="container">
+          <div class="header-inner">
+            <div class="brand-section">
+              <img src="/logo.png?v=6" alt="Mahajan Facilities" class="brand-logo-img" width="54" height="54" fetchpriority="high" decoding="sync" />
+              <div class="brand-titles">
+                <h1>Mahajan Facilities</h1>
+                <p>Daily Housekeeping Cleaning Report</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
     </div>
     <div id="toast-container" class="toast-container"></div>
     <script type="module" src="/src/main.js"></script>

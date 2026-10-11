@@ -182,7 +182,7 @@ function renderApp() {
       <div class="container">
         <div class="header-inner">
           <div class="brand-section">
-            <img src="/logo.png" alt="Mahajan Facilities" class="brand-logo-img" width="54" height="54" fetchpriority="high" decoding="sync" />
+            <img src="/logo.png?v=6" alt="Mahajan Facilities" class="brand-logo-img" width="54" height="54" fetchpriority="high" decoding="sync" />
             <div class="brand-titles">
               <h1>Mahajan Facilities</h1>
               <p>Daily Housekeeping Cleaning Report</p>
