@@ -304,29 +304,6 @@ function renderApp() {
       <section id="floor-cards-container">
         ${renderFloorCards()}
       </section>
-
-      <!-- Field Instructions Card -->
-      <section class="guide-card">
-        <h3 class="guide-title">📱 Field Instructions for Cleaning Managers</h3>
-        <div class="guide-steps">
-          <div class="guide-step-item">
-            <strong>1. Select Report Date</strong>
-            Date change karte hi us din ki alag sheet khulegi. Pichle din ka data mix nahi hoga!
-          </div>
-          <div class="guide-step-item">
-            <strong>2. Snap or Pick Photos</strong>
-            Use "Camera" to take live site photos or "Upload Photos" from gallery. Up to 20 photos per section.
-          </div>
-          <div class="guide-step-item">
-            <strong>3. Automatic Draft Safe</strong>
-            Har date ka draft alag se phone storage me auto-save hota hai.
-          </div>
-          <div class="guide-step-item">
-            <strong>4. Past Reports History</strong>
-            Generate hote hi report "Past Reports" drawer me save ho jati hai, jaha se kabhi bhi purani date ka data khol sakte hain.
-          </div>
-        </div>
-      </section>
     </main>
 
     <!-- Sticky Bottom Action Bar -->
