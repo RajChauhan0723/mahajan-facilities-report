@@ -1,17 +1,19 @@
 import { jsPDF } from 'jspdf';
 import { MAHAJAN_LOGO_BASE64 } from './logoBase64.js';
 
-// Color Palette Constants
-const NAVY_PRIMARY = [15, 43, 72];     // #0f2b48 - Corporate Navy Blue
-const NAVY_SECONDARY = [26, 54, 93];   // #1a365d - Deep Navy Accent
-const NAVY_LIGHT = [238, 242, 246];    // #eef2f6 - Soft Tint
-const TEXT_DARK = [30, 41, 59];        // #1e293b - Slate Dark Text
-const TEXT_MUTED = [100, 116, 139];    // #64748b - Slate Muted Text
-const BORDER_COLOR = [226, 232, 240];  // #e2e8f0 - Light Grey Divider
-const BG_LIGHT = [248, 250, 252];      // #f8fafc - Card Background
+// Color Palette Constants: Royal Navy Blue, Regal Metallic Gold, Crisp White
+const NAVY_PRIMARY = [12, 35, 64];      // #0c2340 - Royal Corporate Navy Blue
+const NAVY_SECONDARY = [7, 23, 43];     // #07172b - Deep Midnight Navy
+const NAVY_LIGHT = [232, 240, 248];     // #e8f0f8 - Soft Navy Tint
+const GOLD_PRIMARY = [197, 155, 39];    // #c59b27 - Regal Metallic Gold
+const GOLD_LIGHT = [251, 245, 226];     // #fbf5e2 - Soft Gold Tint
+const GOLD_DARK = [163, 122, 21];       // #a37a15 - Deep Gold Accent
+const TEXT_DARK = [30, 41, 59];         // #1e293b - Slate Dark Text
+const TEXT_MUTED = [100, 116, 139];     // #64748b - Slate Muted Text
+const BORDER_COLOR = [226, 232, 240];   // #e2e8f0 - Light Grey Divider
+const BG_LIGHT = [248, 250, 252];       // #f8fafc - Card Background
 const WHITE = [255, 255, 255];
-const ACCENT_TEAL = [13, 148, 136];    // Teal for washroom distinction
-const ACCENT_BLUE = [37, 99, 235];     // Royal blue for general cleaning
+const ACCENT_BLUE = [29, 78, 216];      // #1d4ed8 - Royal Blue for General Cleaning
 
 /**
  * Format date object or string into DD-MM-YYYY
@@ -138,7 +140,7 @@ export async function generateDailyReportPDF({ reportDate, floors, onProgress })
       floorName: floor.name,
       sectionLetter: 'B',
       sectionTitle: 'Washroom Cleaning Photos',
-      badgeColor: ACCENT_TEAL,
+      badgeColor: GOLD_PRIMARY,
       photos: floor.washroomPhotos || [],
       currentY,
       marginX,
@@ -180,9 +182,11 @@ export async function generateDailyReportPDF({ reportDate, floors, onProgress })
  * Draws the First Page (Executive Cover Page)
  */
 function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, totalWashroomPhotos, grandTotalPhotos, pageWidth, contentWidth, marginX }) {
-  // Top Corporate Navy Accent Bar
+  // Top Corporate Navy Accent Bar with Regal Gold Strip
   doc.setFillColor(...NAVY_PRIMARY);
-  doc.rect(0, 0, pageWidth, 8, 'F');
+  doc.rect(0, 0, pageWidth, 6, 'F');
+  doc.setFillColor(...GOLD_PRIMARY);
+  doc.rect(0, 6, pageWidth, 2.5, 'F');
 
   let y = 20;
 
@@ -199,7 +203,7 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
   doc.setFontSize(15);
   doc.text('MAHAJAN FACILITIES', marginX + 24, y + 8);
 
-  doc.setTextColor(...TEXT_MUTED);
+  doc.setTextColor(...GOLD_DARK);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('SMART FACILITY SOLUTIONS & INTEGRATED SERVICES', marginX + 24, y + 14);
@@ -219,8 +223,8 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
   doc.text('Comprehensive Daily Quality & Hygiene Inspection Documentation', marginX, y);
 
   y += 6;
-  doc.setDrawColor(...BORDER_COLOR);
-  doc.setLineWidth(0.5);
+  doc.setDrawColor(...GOLD_PRIMARY);
+  doc.setLineWidth(0.6);
   doc.line(marginX, y, marginX + contentWidth, y);
 
   y += 8;
@@ -232,7 +236,7 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
   const kpis = [
     { label: 'REPORT DATE', val: formattedDate, color: NAVY_PRIMARY },
     { label: 'GENERAL PHOTOS', val: String(totalGeneralPhotos), color: ACCENT_BLUE },
-    { label: 'WASHROOM PHOTOS', val: String(totalWashroomPhotos), color: ACCENT_TEAL },
+    { label: 'WASHROOM PHOTOS', val: String(totalWashroomPhotos), color: GOLD_PRIMARY },
     { label: 'TOTAL PHOTOS', val: String(grandTotalPhotos), color: NAVY_PRIMARY }
   ];
 
@@ -261,9 +265,11 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
 
   y += cardH + 10;
 
-  // Building Coverage Header
+  // Building Coverage Header with Gold Trim
   doc.setFillColor(...NAVY_PRIMARY);
   doc.roundedRect(marginX, y, contentWidth, 8, 1, 1, 'F');
+  doc.setFillColor(...GOLD_PRIMARY);
+  doc.rect(marginX, y + 7.2, contentWidth, 0.8, 'F');
   doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
@@ -281,14 +287,14 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
 
   // Table Header
   const colX = [marginX, marginX + 55, marginX + 98, marginX + 140, marginX + 182];
-  doc.setFillColor(...NAVY_LIGHT);
+  doc.setFillColor(...NAVY_PRIMARY);
   doc.rect(marginX, y, contentWidth, 7, 'F');
-  doc.setDrawColor(...BORDER_COLOR);
-  doc.rect(marginX, y, contentWidth, 7, 'D');
+  doc.setFillColor(...GOLD_PRIMARY);
+  doc.rect(marginX, y + 6.3, contentWidth, 0.7, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.setTextColor(...NAVY_PRIMARY);
+  doc.setTextColor(...WHITE);
   doc.text('Floor Level', colX[0] + 3, y + 4.8);
   doc.text('General Cleaning', colX[1] + 3, y + 4.8);
   doc.text('Washroom Cleaning', colX[2] + 3, y + 4.8);
@@ -335,9 +341,10 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
 
   // Table Grand Total Row
   const totalRowH = 7.5;
-  doc.setFillColor(...NAVY_LIGHT);
+  doc.setFillColor(...GOLD_LIGHT);
   doc.rect(marginX, y, contentWidth, totalRowH, 'F');
-  doc.setDrawColor(...BORDER_COLOR);
+  doc.setDrawColor(...GOLD_PRIMARY);
+  doc.setLineWidth(0.5);
   doc.rect(marginX, y, contentWidth, totalRowH, 'D');
 
   doc.setFont('helvetica', 'bold');
@@ -346,6 +353,7 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
   doc.text('Grand Total (13 Floors)', colX[0] + 3, y + 5.2);
   doc.text(`${totalGeneralPhotos} photos`, colX[1] + 3, y + 5.2);
   doc.text(`${totalWashroomPhotos} photos`, colX[2] + 3, y + 5.2);
+  doc.setTextColor(...GOLD_DARK);
   doc.text(`${grandTotalPhotos} photos`, colX[3] + 3, y + 5.2);
 
   y += totalRowH + 10;
@@ -381,15 +389,18 @@ function drawCoverPage(doc, { formattedDate, floorStats, totalGeneralPhotos, tot
 function drawFloorHeader(doc, floorName, marginX, currentY, contentWidth) {
   doc.setFillColor(...NAVY_PRIMARY);
   doc.roundedRect(marginX, currentY, contentWidth, 10, 1.5, 1.5, 'F');
+  doc.setFillColor(...GOLD_PRIMARY);
+  doc.rect(marginX, currentY + 8.5, contentWidth, 1.5, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...WHITE);
-  doc.text(floorName.toUpperCase(), marginX + 5, currentY + 7);
+  doc.text(floorName.toUpperCase(), marginX + 5, currentY + 6.5);
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Mahajan Facilities Inspection Record', marginX + contentWidth - 55, currentY + 6.8);
+  doc.setTextColor(...GOLD_LIGHT);
+  doc.text('Mahajan Facilities Inspection Record', marginX + contentWidth - 55, currentY + 6.3);
 
   return currentY + 14;
 }

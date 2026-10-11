@@ -181,7 +181,7 @@ function renderApp() {
           
           <div class="header-actions">
             <!-- Past Reports History Button -->
-            <button id="btn-open-history" class="btn-ghost-sm" style="color: #ffffff; background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); padding: 7px 14px; font-weight: 700;">
+            <button id="btn-open-history" class="btn-header-gold">
               <span>📜</span> Past Reports (<span id="history-badge-count">${state.reportHistory.length}</span>)
             </button>
 
@@ -194,7 +194,7 @@ function renderApp() {
                    </button>`
             }
 
-            <button id="btn-cloud-guide" class="btn-ghost-sm" style="color: #93c5fd; border-color: rgba(255,255,255,0.3); padding: 7px 12px;">
+            <button id="btn-cloud-guide" class="btn-header-outline">
               <span>🌐</span> Access Anywhere
             </button>
 
@@ -271,8 +271,8 @@ function renderApp() {
           <span id="autosave-text">Draft for ${displayDate} saved locally</span>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button id="btn-start-fresh" class="btn-ghost-sm" style="color: #2563eb;">➕ Start New Sheet</button>
-          <button id="btn-clear-all" class="btn-ghost-sm" style="color: #b91c1c;">Clear This Day</button>
+          <button id="btn-start-fresh" class="btn-ghost-sm" style="color: var(--navy-800); border-color: var(--gold-500); font-weight: 800;">➕ Start New Sheet</button>
+          <button id="btn-clear-all" class="btn-ghost-sm" style="color: var(--danger); font-weight: 700;">Clear This Day</button>
         </div>
       </div>
 
