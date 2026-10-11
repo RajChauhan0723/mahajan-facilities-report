@@ -3,6 +3,7 @@ import {
   saveDraft, 
   loadDraft, 
   clearDraft, 
+  getLastActiveDate,
   saveReportToHistory, 
   getReportHistory, 
   deleteReportFromHistory, 
@@ -130,15 +131,11 @@ function getStats() {
 }
 
 /**
- * Auto-saves state to IndexedDB
+ * Auto-saves current date's state to IndexedDB
  */
 async function autoSaveState() {
   try {
-    await saveDraft({
-      reportDate: state.reportDate,
-      floors: state.floors,
-      savedAt: Date.now()
-    });
+    await saveDraft(state.reportDate, state.floors);
     updateAutosaveIndicator();
   } catch (err) {
     console.error('Error auto-saving:', err);
@@ -149,7 +146,7 @@ function updateAutosaveIndicator() {
   const el = document.getElementById('autosave-text');
   if (el) {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    el.textContent = `Draft saved in local IndexedDB storage (${time})`;
+    el.textContent = `Draft for ${formatDisplayDate(state.reportDate)} saved locally (${time})`;
   }
 }
 
@@ -266,14 +263,15 @@ function renderApp() {
         </div>
       </section>
 
-      <!-- Autosave Notice -->
+      <!-- Autosave Notice & Date Reset Tools -->
       <div class="autosave-bar">
         <div class="autosave-status">
           <div class="status-dot"></div>
-          <span id="autosave-text">Draft saved in local IndexedDB storage</span>
+          <span id="autosave-text">Draft for ${displayDate} saved locally</span>
         </div>
-        <div>
-          <button id="btn-clear-all" class="btn-ghost-sm" style="color: #b91c1c;">Clear All Photos</button>
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-start-fresh" class="btn-ghost-sm" style="color: #2563eb;">➕ Start New Sheet</button>
+          <button id="btn-clear-all" class="btn-ghost-sm" style="color: #b91c1c;">Clear This Day</button>
         </div>
       </div>
 
@@ -302,7 +300,7 @@ function renderApp() {
         <div class="guide-steps">
           <div class="guide-step-item">
             <strong>1. Select Report Date</strong>
-            Confirm the inspection date at the top before starting your round.
+            Date change karte hi us din ki alag sheet khulegi. Pichle din ka data mix nahi hoga!
           </div>
           <div class="guide-step-item">
             <strong>2. Snap or Pick Photos</strong>
@@ -310,11 +308,11 @@ function renderApp() {
           </div>
           <div class="guide-step-item">
             <strong>3. Automatic Draft Safe</strong>
-            Photos are saved offline in your phone storage. Leaving or refreshing the tab will not lose photos.
+            Har date ka draft alag se phone storage me auto-save hota hai.
           </div>
           <div class="guide-step-item">
             <strong>4. Past Reports History</strong>
-            All generated reports are automatically saved in the "Past Reports" drawer for future retrieval anytime.
+            Generate hote hi report "Past Reports" drawer me hamesha ke liye save ho jati hai.
           </div>
         </div>
       </section>
@@ -368,20 +366,20 @@ function renderApp() {
       </div>
     </div>
 
-    <!-- Clear All Confirmation Modal -->
+    <!-- Clear Day Confirmation Modal -->
     <div id="modal-clear-confirm" class="modal-overlay">
       <div class="modal-dialog">
         <div class="modal-header">
-          <h3 class="modal-title">Clear All Uploaded Photos?</h3>
+          <h3 class="modal-title">Clear Photos For ${displayDate}?</h3>
           <button class="modal-close-btn" id="btn-close-clear-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p>This will permanently remove all photos across all 13 floors and reset your current draft.</p>
+          <p>This will permanently remove photos for <strong>${displayDate}</strong> across all 13 floors and reset today's sheet.</p>
           <p style="margin-top: 10px; font-weight: 700; color: #b91c1c;">Are you sure you want to proceed?</p>
         </div>
         <div class="modal-footer">
           <button id="btn-cancel-clear" class="btn-ghost-sm" style="padding: 8px 16px;">Cancel</button>
-          <button id="btn-confirm-clear" class="btn-danger-outline" style="background: #ef4444; color: white;">Yes, Clear All Photos</button>
+          <button id="btn-confirm-clear" class="btn-danger-outline" style="background: #ef4444; color: white;">Yes, Clear This Day</button>
         </div>
       </div>
     </div>
@@ -460,7 +458,7 @@ function renderApp() {
 
     <!-- PDF Success / Preview Modal -->
     <div id="modal-pdf-success" class="modal-overlay">
-      <div class="modal-dialog" style="max-width: 560px;">
+      <div class="modal-dialog" style="max-width: 600px;">
         <div class="modal-header">
           <h3 class="modal-title">🎉 Report PDF Generated Successfully!</h3>
           <button class="modal-close-btn" id="btn-close-pdf-success">&times;</button>
@@ -476,6 +474,9 @@ function renderApp() {
             </button>
             <button id="btn-modal-open" class="btn-upload" style="background: var(--navy-800); font-size: 14px; padding: 10px 20px;">
               <span>👁️</span> Open in New Tab
+            </button>
+            <button id="btn-modal-new-day" class="btn-ghost-sm" style="font-size: 14px; padding: 10px 20px; border-color: var(--slate-300); color: var(--navy-800);">
+              <span>➕</span> Start New Day
             </button>
           </div>
         </div>
@@ -702,15 +703,56 @@ function renderThumbnailCards(floorId, sectionKey, photos) {
  * Attach DOM Event Handlers
  */
 function attachEventListeners() {
-  // Date Picker change
+  // Date Picker change -> Date-Isolated Session Switcher!
   const dateInput = document.getElementById('report-date-input');
   if (dateInput) {
-    dateInput.addEventListener('change', (e) => {
-      state.reportDate = e.target.value || getTodayYMD();
-      const formatted = formatDisplayDate(state.reportDate);
-      const kpiDate = document.getElementById('kpi-date-val');
-      if (kpiDate) kpiDate.textContent = formatted;
-      autoSaveState();
+    dateInput.addEventListener('change', async (e) => {
+      const oldDate = state.reportDate;
+      const newDate = e.target.value || getTodayYMD();
+      if (oldDate === newDate) return;
+
+      // 1. Save work of oldDate
+      await saveDraft(oldDate, state.floors);
+
+      // 2. Switch active date
+      state.reportDate = newDate;
+
+      // 3. Load draft for newDate
+      const existingDraft = await loadDraft(newDate);
+      if (existingDraft && Array.isArray(existingDraft.floors) && existingDraft.floors.length === 13) {
+        state.floors = existingDraft.floors;
+        const stats = getStats();
+        showToast(`Loaded saved sheet for ${formatDisplayDate(newDate)} (${stats.grandTotal} photos).`, 'info');
+      } else {
+        // Brand new date sheet with empty floors!
+        state.floors = FLOORS_CONFIG.map((f) => ({
+          id: f.id,
+          name: f.name,
+          generalPhotos: [],
+          washroomPhotos: []
+        }));
+        showToast(`Fresh report sheet opened for ${formatDisplayDate(newDate)}.`, 'info');
+      }
+
+      state.lastGeneratedPdf = null;
+      refreshEntireUI();
+    });
+  }
+
+  // Start Fresh Sheet for the current date
+  const btnStartFresh = document.getElementById('btn-start-fresh');
+  if (btnStartFresh) {
+    btnStartFresh.addEventListener('click', async () => {
+      state.floors = FLOORS_CONFIG.map((f) => ({
+        id: f.id,
+        name: f.name,
+        generalPhotos: [],
+        washroomPhotos: []
+      }));
+      state.lastGeneratedPdf = null;
+      await clearDraft(state.reportDate);
+      refreshEntireUI();
+      showToast(`Started fresh sheet for ${formatDisplayDate(state.reportDate)}.`, 'info');
     });
   }
 
@@ -975,7 +1017,7 @@ function attachEventListeners() {
     });
   }
 
-  // Clear All Modal
+  // Clear Day Modal
   const btnClearAll = document.getElementById('btn-clear-all');
   const modalClear = document.getElementById('modal-clear-confirm');
   const btnCancelClear = document.getElementById('btn-cancel-clear');
@@ -993,15 +1035,17 @@ function attachEventListeners() {
 
     if (btnConfirmClear) {
       btnConfirmClear.addEventListener('click', async () => {
-        state.floors.forEach((f) => {
-          f.generalPhotos = [];
-          f.washroomPhotos = [];
-        });
+        state.floors = FLOORS_CONFIG.map((f) => ({
+          id: f.id,
+          name: f.name,
+          generalPhotos: [],
+          washroomPhotos: []
+        }));
         state.lastGeneratedPdf = null;
-        await clearDraft();
+        await clearDraft(state.reportDate);
         modalClear.classList.remove('active');
         refreshEntireUI();
-        showToast('All photos cleared successfully.', 'info');
+        showToast(`Cleared photos for ${formatDisplayDate(state.reportDate)}.`, 'info');
       });
     }
   }
@@ -1023,6 +1067,7 @@ function attachEventListeners() {
   const modalSuccess = document.getElementById('modal-pdf-success');
   const btnModalDownload = document.getElementById('btn-modal-download');
   const btnModalOpen = document.getElementById('btn-modal-open');
+  const btnModalNewDay = document.getElementById('btn-modal-new-day');
 
   if (btnCloseSuccess && modalSuccess) {
     btnCloseSuccess.addEventListener('click', () => modalSuccess.classList.remove('active'));
@@ -1043,6 +1088,27 @@ function attachEventListeners() {
       if (state.lastGeneratedPdf && state.lastGeneratedPdf.url) {
         window.open(state.lastGeneratedPdf.url, '_blank');
       }
+    });
+  }
+
+  if (btnModalNewDay) {
+    btnModalNewDay.addEventListener('click', async () => {
+      modalSuccess.classList.remove('active');
+      // Set to today's date or advance by 1 day
+      const d = new Date(state.reportDate);
+      d.setDate(d.getDate() + 1);
+      const nextYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      
+      state.reportDate = nextYMD;
+      state.floors = FLOORS_CONFIG.map((f) => ({
+        id: f.id,
+        name: f.name,
+        generalPhotos: [],
+        washroomPhotos: []
+      }));
+      state.lastGeneratedPdf = null;
+      refreshEntireUI();
+      showToast(`Started new day sheet for ${formatDisplayDate(nextYMD)}!`, 'success');
     });
   }
 }
@@ -1381,7 +1447,6 @@ function handleDownloadPdfClick() {
  * App Initialization: Loads IndexedDB draft & past reports history
  */
 async function initApp() {
-  // Register Service Worker for offline PWA
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch((err) => {
@@ -1391,23 +1456,20 @@ async function initApp() {
   }
 
   try {
-    // Load Past Reports History
     state.reportHistory = await getReportHistory();
+    const lastDate = await getLastActiveDate();
+    const activeDate = lastDate || getTodayYMD();
+    state.reportDate = activeDate;
 
-    // Load in-progress draft
-    const draft = await loadDraft();
-    if (draft) {
-      if (draft.reportDate) state.reportDate = draft.reportDate;
-      if (Array.isArray(draft.floors) && draft.floors.length === 13) {
-        state.floors = draft.floors;
-      }
-      renderApp();
-      const stats = getStats();
-      if (stats.grandTotal > 0) {
-        showToast(`Restored draft from phone storage: ${stats.grandTotal} photos across ${stats.floorsWithPhotos} floors.`, 'info');
-      }
-    } else {
-      renderApp();
+    const draft = await loadDraft(activeDate);
+    if (draft && Array.isArray(draft.floors) && draft.floors.length === 13) {
+      state.floors = draft.floors;
+    }
+
+    renderApp();
+    const stats = getStats();
+    if (stats.grandTotal > 0) {
+      showToast(`Restored draft for ${formatDisplayDate(activeDate)} (${stats.grandTotal} photos).`, 'info');
     }
   } catch (err) {
     console.warn('Draft initialization failed:', err);

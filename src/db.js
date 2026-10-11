@@ -1,9 +1,8 @@
 // IndexedDB persistence for Mahajan Facilities Daily Cleaning Report
 const DB_NAME = 'MahajanHousekeepingDB';
-const DB_VERSION = 2; // Upgraded for Past Report History store
+const DB_VERSION = 2;
 const DRAFT_STORE = 'report_draft';
 const HISTORY_STORE = 'report_history';
-const DRAFT_KEY = 'current_report_draft';
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -35,20 +34,33 @@ function openDatabase() {
   });
 }
 
+function getDraftKey(reportDate) {
+  return 'draft_' + (reportDate || 'default');
+}
+
 // ==========================================
-// DRAFT PERSISTENCE (Current in-progress report)
+// DATE-SPECIFIC DRAFT PERSISTENCE
+// Each date has its own independent draft!
 // ==========================================
 
-export async function saveDraft(data) {
+export async function saveDraft(reportDate, floorsData) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(DRAFT_STORE, 'readwrite');
       const store = tx.objectStore(DRAFT_STORE);
-      const req = store.put(data, DRAFT_KEY);
+      
+      const payload = {
+        reportDate: reportDate,
+        floors: floorsData,
+        savedAt: Date.now()
+      };
 
-      req.onsuccess = () => resolve(true);
-      req.onerror = (e) => reject(e.target.error);
+      store.put(payload, getDraftKey(reportDate));
+      store.put(reportDate, 'last_active_date');
+
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (e) => reject(e.target.error);
     });
   } catch (err) {
     console.warn('Could not auto-save draft to IndexedDB:', err);
@@ -56,13 +68,13 @@ export async function saveDraft(data) {
   }
 }
 
-export async function loadDraft() {
+export async function loadDraft(reportDate) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(DRAFT_STORE, 'readonly');
       const store = tx.objectStore(DRAFT_STORE);
-      const req = store.get(DRAFT_KEY);
+      const req = store.get(getDraftKey(reportDate));
 
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = (e) => reject(e.target.error);
@@ -73,20 +85,36 @@ export async function loadDraft() {
   }
 }
 
-export async function clearDraft() {
+export async function clearDraft(reportDate) {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(DRAFT_STORE, 'readwrite');
       const store = tx.objectStore(DRAFT_STORE);
-      const req = store.delete(DRAFT_KEY);
+      store.delete(getDraftKey(reportDate));
 
-      req.onsuccess = () => resolve(true);
-      req.onerror = (e) => reject(e.target.error);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (e) => reject(e.target.error);
     });
   } catch (err) {
     console.warn('Could not clear draft from IndexedDB:', err);
     return false;
+  }
+}
+
+export async function getLastActiveDate() {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DRAFT_STORE, 'readonly');
+      const store = tx.objectStore(DRAFT_STORE);
+      const req = store.get('last_active_date');
+
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (err) {
+    return null;
   }
 }
 
@@ -121,7 +149,6 @@ export async function getReportHistory() {
 
       req.onsuccess = () => {
         const list = req.result || [];
-        // Sort descending by creation date (newest first)
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         resolve(list);
       };
