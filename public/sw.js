@@ -1,14 +1,17 @@
 // Service Worker for Mahajan Facilities Daily Cleaning Report PWA
-const CACHE_NAME = 'mahajan-report-v2';
+const CACHE_NAME = 'mahajan-report-v3';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/logo.png',
-  '/icon.svg',
   '/icon-192.png',
   '/icon-512.png',
-  '/favicon.svg'
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+  '/favicon-32.png',
+  '/favicon-64.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -62,8 +65,9 @@ self.addEventListener('fetch', (event) => {
 
         return networkResponse;
       }).catch(() => {
+        // Offline fallback
         if (event.request.mode === 'navigate') {
-          return caches.match('/index.html') || caches.match('/');
+          return caches.match('/');
         }
       });
     })
